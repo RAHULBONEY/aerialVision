@@ -8,7 +8,7 @@ OUTPUT_DIR = 'datasets/vaid_converted_labels'
 
 CLASSES = ['sedan', 'minibus', 'truck', 'pickup', 'bus', 'cement truck', 'trailer'] 
 
-
+#hello3
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

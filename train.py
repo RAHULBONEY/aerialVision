@@ -6,5 +6,5 @@ results = model.train(
    imgsz=640,                              
    project='traffic_monitoring_runs',      
    name='first_aerial_run'                 
-)#hello
+)#hello2
 print("Training complete!new model is saved in the 'traffic_monitoring_runs' folder.")

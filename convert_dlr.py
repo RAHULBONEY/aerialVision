@@ -2,7 +2,7 @@ import os
 import shutil
 from PIL import Image
 
-
+#hello4
 DLR_ROOT_DIR = r'C:\Users\RAHUL BONEY\Downloads'
 OUTPUT_DIR = 'datasets/dlr_converted_labels'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
