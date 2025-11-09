@@ -2,3 +2,5 @@ venv
 datasets/all_data_combined/
 datasets/vaid_converted_labels/
 datasets/dlr_converted_labels/
+traffic_data/
+traffic_data.zip
