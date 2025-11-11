@@ -8,9 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 
 
-MODEL_PATH = "best.pt"
+MODEL_PATH = "best.pt" 
 UPLOAD_DIR = "videos_uploaded"
 PROCESSED_DIR = "videos_processed"
+
+
+AMBULANCE_CLASS_ID = 4  
+CONGESTION_THRESHOLD = 25
+
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DIR, exist_ok=True)
@@ -61,26 +66,18 @@ async def process_video_endpoint(video: UploadFile = File(...)):
             shutil.copyfileobj(video.file, buffer)
         print(f"DEBUG: File saved to {input_path}")
 
-       
+        
         cap = cv2.VideoCapture(input_path)
         if not cap.isOpened():
-            print("DEBUG: FATAL ERROR - cv2.VideoCapture could not open the input file.")
             raise HTTPException(status_code=500, detail="Could not open uploaded video file.")
-        
         fps = cap.get(cv2.CAP_PROP_FPS)
-        
-        
-        if not fps or fps <= 0:
-            print(f"DEBUG: Invalid FPS {fps} read from video. Defaulting to 30.")
-            fps = 30
-       
-        
-        print(f"DEBUG: Original video FPS read as: {fps}")
         cap.release()
+        if not fps or fps <= 0:
+            fps = 30 
 
         
         basename = os.path.splitext(video.filename)[0]
-        output_filename = f"processed_{basename}.mp4"
+        output_filename = f"processed_{basename}.mp4" 
         output_path = os.path.join(PROCESSED_DIR, output_filename)
         
         print(f"DEBUG: Output path will be: {output_path}")
@@ -89,21 +86,60 @@ async def process_video_endpoint(video: UploadFile = File(...)):
         results_generator = model.predict(
             source=input_path,
             stream=True,
-            tracker="botsort.yaml"
+            tracker="deepsort.yaml"  
         )
 
         frame_count = 0
         for results in results_generator:
             annotated_frame = results.plot() 
 
+          
             
+            is_ambulance_detected = False
+            vehicle_count = 0
+
+           
+            if results.boxes.id is not None:
+                vehicle_count = len(results.boxes.id)
+                class_ids = results.boxes.cls.int().cpu().tolist()
+                
+                
+                if AMBULANCE_CLASS_ID in class_ids:
+                    is_ambulance_detected = True
+
+            
+            if vehicle_count > CONGESTION_THRESHOLD:
+                cv2.putText(
+                    annotated_frame, 
+                    "CONGESTION", 
+                    (50, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 
+                    3, 
+                    (0, 0, 255), 
+                    5, 
+                    cv2.LINE_AA
+                )
+            
+            
+            if is_ambulance_detected:
+                cv2.putText(
+                    annotated_frame, 
+                    "AMBULANCE DETECTED", 
+                    (50, 200),
+                    cv2.FONT_HERSHEY_SIMPLEX, 
+                    3,
+                    (0, 0, 255), 
+                    5, 
+                    cv2.LINE_AA
+                )
+            
+           
             if out is None:
                 frame_height, frame_width, _ = annotated_frame.shape
-                fourcc = cv2.VideoWriter_fourcc(*'avc1') 
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
                 out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
-                
                 if not out.isOpened():
-                    print("DEBUG: FATAL ERROR - cv2.VideoWriter failed to open.")
+                    print("DEBUG: FATAL ERROR - cv2.VideoWriter failed to open. Check H.264 (avc1) codec support.")
                     raise HTTPException(status_code=500, detail="Could not create video writer.")
                 print(f"DEBUG: VideoWriter initialized with size: {frame_width}x{frame_height} @ {fps} FPS")
             
@@ -111,27 +147,16 @@ async def process_video_endpoint(video: UploadFile = File(...)):
             frame_count += 1
         
         if frame_count == 0:
-            print("DEBUG: FATAL ERROR - No frames were processed by the model.")
             raise HTTPException(status_code=500, detail="Model did not process any frames.")
-
-        print(f"DEBUG: Processed {frame_count} frames.")
-        
         
         if out:
             out.release()
-        print("DEBUG: VideoWriter released.")
-
-       
-        file_size = 0
-        if os.path.exists(output_path):
-            file_size = os.path.getsize(output_path)
-            
-        print(f"DEBUG: Final file created at {output_path} with size {file_size} bytes.")
         
+        file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
         if file_size == 0:
              raise HTTPException(status_code=500, detail="Processed video file is empty (0 bytes).")
 
-       
+        
         return FileResponse(
             path=output_path,
             media_type="video/mp4",
@@ -142,11 +167,12 @@ async def process_video_endpoint(video: UploadFile = File(...)):
         print(f"DEBUG: Error during processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-       
+        
         if os.path.exists(input_path):
             os.remove(input_path)
             print(f"DEBUG: Cleaned up {input_path}")
-            
+
+
 if __name__ == "__main__":
     print(f"Starting API server on http://127.0.0.1:8000")
     uvicorn.run(app, host="127.0.0.1", port=8000)

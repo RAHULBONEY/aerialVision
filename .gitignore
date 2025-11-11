@@ -4,3 +4,5 @@ datasets/vaid_converted_labels/
 datasets/dlr_converted_labels/
 traffic_data/
 traffic_data.zip
+videos_processed/
+videos_uploaded/
