@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* DEFAULT THEME (DARK COMMAND CENTER) */
+    --background: 211 60% 11%;      /* #0B1C2D */
+    --foreground: 0 0% 92%;         /* #EAEAEA */
+
+    --card: 211 54% 19%;            /* #162F4A */
+    --card-foreground: 0 0% 92%;
+
+    --popover: 211 60% 11%;
+    --popover-foreground: 0 0% 92%;
+
+    --primary: 186 100% 50%;        /* #00E5FF - Neon Cyan */
+    --primary-foreground: 211 60% 11%;
+
+    --secondary: 215 52% 25%;       /* #1E3A5F - Border Blue */
+    --secondary-foreground: 0 0% 92%;
+
+    --muted: 214 10% 46%;           /* #687280 */
+    --muted-foreground: 215 12% 65%; /* #9AA4AF */
+
+    --accent: 186 100% 50%;
+    --accent-foreground: 211 60% 11%;
+
+    --destructive: 359 77% 55%;     /* #E53935 - Traffic Red */
+    --destructive-foreground: 0 0% 92%;
+
+    --border: 215 52% 25%;
+    --input: 215 52% 25%;
+    --ring: 186 100% 50%;
+
+    --emergency: 33 100% 50%;       /* #FF8C00 - Orange */
+    --success: 145 63% 49%;         /* #2ECC71 - Green */
+    
+    --radius: 0.5rem;
+  }
+
+  /* Optional Light Mode (for the toggle later) */
+  .light {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 201 96% 39%;
+    --border: 214 32% 91%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
