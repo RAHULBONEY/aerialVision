@@ -1,64 +1,43 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from '@/context/AuthContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "@/pages/Login";
 
-// Components
-import LoginPage from '@/pages/Login';
-import DashboardPage from '@/pages/Dashboard';
-import AppShell from '@/components/layout/AppShell';
-import AdminDashboard from '@/pages/AdminDashboard';
-import HospitalDashboard from '@/pages/HospitalDashboard';
-import PoliceDashboard from '@/pages/PoliceDashboard'; // Add this import
+import AdminLayout from "@/components/layout/AdminLayout";
+import Overview from "@/pages/admin/Overview";
+import Operators from "@/pages/admin/Operators";
+// import Roles from "@/pages/admin/Roles";
+// import Streams from "@/pages/admin/Streams";
+// import ModelConfig from "@/pages/admin/ModelConfig";
+// import AuditLogs from "@/pages/admin/AuditLogs";
+// import LoginHistory from "@/pages/admin/LoginHistory";
+// import Metrics from "@/pages/admin/Metrics";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
-      retry: 2,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+import RequireAuth from "@/components/common/RequireAuth";
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            {/* PUBLIC ROUTE: Login */}
-            <Route path="/" element={<LoginPage />} />
+    <Routes>
+      <Route path="/" element={<LoginPage />} />
 
-            {/* PROTECTED ROUTES (Wrapped in AppShell) */}
+      {/* ADMIN ROUTES */}
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth role="ADMIN">
+            <AdminLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<Overview />} />
+        <Route path="operators" element={<Operators />} />
+        {/* <Route path="roles" element={<Roles />} />
+        <Route path="streams" element={<Streams />} />
+        <Route path="model" element={<ModelConfig />} />
+        <Route path="audit-logs" element={<AuditLogs />} />
+        <Route path="login-history" element={<LoginHistory />} />
+        <Route path="metrics" element={<Metrics />} /> */}
+      </Route>
 
-            {/* General Dashboard - All authenticated users */}
-            <Route element={<AppShell allowedRoles={['ADMIN', 'admin', 'TRAFFIC_POLICE', 'EMERGENCY']} />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-            </Route>
-
-            {/* Admin Only */}
-            <Route element={<AppShell allowedRoles={['ADMIN', 'admin']} />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-            </Route>
-
-            {/* Police Dashboard */}
-            <Route element={<AppShell allowedRoles={['TRAFFIC_POLICE', 'ADMIN', 'admin']} />}>
-              <Route path="/police" element={<PoliceDashboard />} />
-              <Route path="/incidents" element={<PoliceDashboard />} /> {/* Alias for incidents */}
-            </Route>
-
-            {/* Hospital Dashboard */}
-            <Route element={<AppShell allowedRoles={['EMERGENCY', 'ADMIN', 'admin']} />}>
-              <Route path="/hospital" element={<HospitalDashboard />} />
-            </Route>
-
-            {/* Catch-all redirect to dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+      <Route path="*" element={<Navigate to="/admin" replace />} />
+    </Routes>
   );
 }

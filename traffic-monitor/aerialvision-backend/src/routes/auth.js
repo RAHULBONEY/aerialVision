@@ -1,20 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { requireRole, ROLES } = require('../middleware/rbac');
-const authController = require('../controllers/authcontroller');
-const rateLimit = require('../middleware/rateLimit');
+const {getProfile,logout}=require("../controllers/authController.js")
 
-// Public routes
-router.post('/login', rateLimit.loginLimiter, authController.login);
+router.use(authenticateToken);
 
-// Protected routes
-router.use(authenticateToken); 
-
-router.post('/logout', authController.logout);
-router.get('/profile', authController.getProfile);
-
-// Admin only routes
-router.post('/users', requireRole(ROLES.ADMIN_ONLY, 5), authController.createUser);
+router.get('/profile', (req, res, next) => {
+  console.log('HIT /api/auth/profile');
+  next();
+}, getProfile);
+router.post('/logout', logout);
 
 module.exports = router;

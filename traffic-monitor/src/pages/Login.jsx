@@ -1,40 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { useLoginMutation, useSeedAdminMutation } from "@/hooks/useAuthQueries";
-import { ShieldCheck, Lock, Mail, Activity, Crosshair, ChevronRight, Zap, Database, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-// --- MICRO VISUAL COMPONENTS ---
+import React, { useEffect, useState } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import {
+    ShieldCheck,
+    Lock,
+    Mail,
+    Activity,
+    Crosshair,
+    ChevronRight,
+    AlertCircle,
+} from "lucide-react";
 
 const CornerBrackets = () => (
     <>
-        <div className="absolute top-0 left-0 h-4 w-4 border-l-2 border-t-2 border-primary/50 rounded-tl-sm" />
-        <div className="absolute top-0 right-0 h-4 w-4 border-r-2 border-t-2 border-primary/50 rounded-tr-sm" />
-        <div className="absolute bottom-0 left-0 h-4 w-4 border-l-2 border-b-2 border-primary/50 rounded-bl-sm" />
-        <div className="absolute bottom-0 right-0 h-4 w-4 border-r-2 border-b-2 border-primary/50 rounded-br-sm" />
+        <div className="absolute top-0 left-0 h-4 w-4 border-l-2 border-t-2 border-blue-400 rounded-tl-sm" />
+        <div className="absolute top-0 right-0 h-4 w-4 border-r-2 border-t-2 border-blue-400 rounded-tr-sm" />
+        <div className="absolute bottom-0 left-0 h-4 w-4 border-l-2 border-b-2 border-blue-400 rounded-bl-sm" />
+        <div className="absolute bottom-0 right-0 h-4 w-4 border-r-2 border-b-2 border-blue-400 rounded-br-sm" />
     </>
 );
 
 const GridBackground = () => (
-    <div className="absolute inset-0 z-0 overflow-hidden bg-[#050b14]">
-        {/* Perspective Grid Floor */}
-        <div className="absolute inset-0 bg-grid-pattern opacity-[0.15] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
-        {/* Radial Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[100px]" />
-        {/* Scanner Line */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,229,255,0.03)_50%,transparent_100%)] w-full h-[2px] animate-scan top-1/2" />
+    <div className="absolute inset-0 z-0 overflow-hidden bg-gradient-to-b from-[#050b14] to-[#0a1525]">
+        {/* Grid pattern */}
+        <div
+            className="absolute inset-0 opacity-10"
+            style={{
+                backgroundImage: `
+                    linear-gradient(rgba(0, 229, 255, 0.3) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 229, 255, 0.3) 1px, transparent 1px)
+                `,
+                backgroundSize: '50px 50px'
+            }}
+        />
+
+        {/* Radial glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[80px]" />
+
+        {/* Animated scan line */}
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scan" />
     </div>
 );
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [bootText, setBootText] = useState('');
+    const [email, setEmail] = useState("test@example.com");
+    const [password, setPassword] = useState("");
+    const [bootText, setBootText] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // --- LOGIC HOOKS ---
-    const { mutate: login, isPending: isLoginPending, isSuccess: isLoginSuccess, isError: isLoginError, error: loginError } = useLoginMutation();
-    const { mutate: seedAdmin, isPending: isSeedPending } = useSeedAdminMutation();
-
-    // Typing Effect for "Boot" Text
     useEffect(() => {
         const text = "SYSTEM.READY // WAITING_FOR_OPERATOR...";
         let i = 0;
@@ -46,157 +60,130 @@ export default function LoginPage() {
         return () => clearInterval(interval);
     }, []);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // This triggers the AuthService logic we built
-        login({ email, password });
-    };
+        setError(null);
+        setLoading(true);
+        console.log("Login attempt with:", email);
 
-    const handleDevSeed = (e) => {
-        e.preventDefault();
-        // Dev backdoor to fix empty database
-        if (!email || !password) {
-            alert("Please enter Email & Password to use for the new Admin account.");
-            return;
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            console.log("Login successful:", userCredential.user);
+            // AuthContext will handle the navigation
+        } catch (err) {
+            console.error("Login error:", err);
+            setError(err.message || "Authentication failed");
+            setLoading(false);
         }
-        seedAdmin({ email, password }, {
-            onSuccess: () => alert("DATABASE SEEDED: Admin profile created. You can now Login."),
-            onError: (err) => alert(`SEED FAILED: ${err.message}`)
-        });
     };
 
     return (
-        <div className="relative flex min-h-screen items-center justify-center font-sans overflow-hidden text-slate-100 selection:bg-primary/30">
+        <div className="relative min-h-screen flex items-center justify-center bg-[#050b14] text-white">
             <GridBackground />
 
-            <div className="relative z-10 w-full max-w-[420px] p-6">
+            {/* Add scan animation CSS */}
+            <style jsx>{`
+                @keyframes scan {
+                    0% {
+                        transform: translateY(-100vh);
+                    }
+                    100% {
+                        transform: translateY(100vh);
+                    }
+                }
+                .animate-scan {
+                    animation: scan 3s linear infinite;
+                }
+            `}</style>
 
-                {/* Header Status Bar */}
-                <div className="flex justify-between text-[10px] font-mono text-primary/60 mb-2 tracking-widest uppercase">
-                    <span>Secure Node: TLS 1.3</span>
-                    <span className="animate-pulse">Gateway: Active</span>
-                </div>
-
-                {/* --- GLASS CARD --- */}
-                <div className="relative bg-[#0B1C2D]/60 backdrop-blur-xl border border-white/10 shadow-[0_0_60px_-15px_rgba(0,229,255,0.3)] p-8 rounded-xl overflow-hidden group">
+            <div className="relative z-10 w-full max-w-md mx-4">
+                <div className="relative bg-gradient-to-b from-blue-900/20 to-blue-950/10 backdrop-blur-xl border border-blue-500/20 rounded-xl p-8 shadow-2xl shadow-blue-900/20">
                     <CornerBrackets />
 
-                    {/* Interior Scanlines */}
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,6px_100%] pointer-events-none opacity-20" />
-
-                    {/* Logo Area */}
-                    <div className="text-center mb-10 relative">
-                        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 border border-primary/30 shadow-[0_0_15px_rgba(0,229,255,0.3)] relative">
-                            <div className="absolute inset-0 border-t-2 border-primary/60 rounded-full animate-spin-slow" />
-                            <ShieldCheck className={cn("w-8 h-8 text-primary transition-all duration-700", isLoginSuccess ? "scale-125 text-green-400" : "")} />
+                    <div className="text-center mb-10">
+                        <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-500/20 to-cyan-500/10 rounded-full flex items-center justify-center mb-6 border border-blue-400/30 shadow-lg shadow-blue-500/10">
+                            <ShieldCheck className="w-10 h-10 text-blue-400" />
                         </div>
-                        <h1 className="text-3xl font-black tracking-tighter text-white italic">
-                            AERIAL<span className="text-primary">VISION</span>
+                        <h1 className="text-4xl font-black italic tracking-tighter mb-2">
+                            AERIAL<span className="text-blue-400">VISION</span>
                         </h1>
-                        <p className="text-[10px] text-slate-400 font-mono tracking-[0.3em] uppercase mt-1">
-                            Traffic Command Node v4.0
+                        <p className="text-xs text-blue-300/80 font-mono tracking-widest">
+                            Traffic Command Node
                         </p>
                     </div>
 
-                    {/* Login Form */}
-                    <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-
-                        {/* Email */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] uppercase font-bold tracking-wider text-primary/70 ml-1">Operator ID</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs uppercase font-bold text-blue-300/70 tracking-wider">
+                                Operator ID
+                            </label>
+                            <div className="relative">
+                                <Mail className="absolute left-4 top-3.5 h-5 w-5 text-blue-400/60" />
                                 <input
                                     type="email"
+                                    placeholder="test@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-[#050b14]/50 border border-slate-700/50 text-slate-100 text-sm rounded-md py-2.5 pl-10 pr-4 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-slate-600 font-mono"
-                                    placeholder="OPERATOR EMAIL"
-                                    disabled={isLoginPending || isLoginSuccess}
+                                    className="w-full bg-black/40 border border-blue-500/30 text-white placeholder-blue-300/50 text-sm rounded-lg py-3.5 pl-12 pr-4 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                                     required
+                                    disabled={loading}
                                 />
                             </div>
                         </div>
 
-                        {/* Password */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] uppercase font-bold tracking-wider text-primary/70 ml-1">Access Key</label>
-                            <div className="relative group">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                        <div className="space-y-2">
+                            <label className="text-xs uppercase font-bold text-blue-300/70 tracking-wider">
+                                Access Key
+                            </label>
+                            <div className="relative">
+                                <Lock className="absolute left-4 top-3.5 h-5 w-5 text-blue-400/60" />
                                 <input
                                     type="password"
+                                    placeholder="Enter your password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-[#050b14]/50 border border-slate-700/50 text-slate-100 text-sm rounded-md py-2.5 pl-10 pr-4 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-slate-600 font-mono"
-                                    placeholder="••••••••••••"
-                                    disabled={isLoginPending || isLoginSuccess}
+                                    className="w-full bg-black/40 border border-blue-500/30 text-white placeholder-blue-300/50 text-sm rounded-lg py-3.5 pl-12 pr-4 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                                     required
+                                    disabled={loading}
                                 />
                             </div>
                         </div>
 
-                        {/* Error Message */}
-                        {isLoginError && (
-                            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 p-2 rounded border border-red-500/20 animate-in slide-in-from-top-2">
-                                <AlertCircle size={14} />
-                                <span className="font-mono uppercase">{loginError?.message || "Auth Handshake Failed"}</span>
+                        {error && (
+                            <div className="flex items-center gap-3 text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+                                <AlertCircle size={16} />
+                                <span className="font-medium">{error}</span>
                             </div>
                         )}
 
-                        {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={isLoginPending || isLoginSuccess}
-                            className={cn(
-                                "w-full py-3 rounded-sm font-bold tracking-widest uppercase text-xs transition-all duration-300 relative overflow-hidden group border",
-                                isLoginSuccess
-                                    ? "bg-green-500/20 border-green-500 text-green-400"
-                                    : "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary hover:shadow-[0_0_20px_rgba(0,229,255,0.4)]"
-                            )}
+                            disabled={loading}
+                            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-blue-800 disabled:to-cyan-800 text-white font-bold uppercase text-sm tracking-wider py-4 rounded-lg border border-blue-400/30 hover:border-blue-300/50 disabled:border-blue-700/30 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-400/30 disabled:shadow-none disabled:cursor-not-allowed group"
                         >
-                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                {isLoginPending ? (
+                            <span className="flex items-center justify-center gap-3">
+                                {loading ? (
                                     <>
-                                        <Activity className="animate-spin" size={16} />
-                                        <span>ESTABLISHING UPLINK...</span>
-                                    </>
-                                ) : isLoginSuccess ? (
-                                    <>
-                                        <ShieldCheck size={16} />
-                                        <span>ACCESS GRANTED</span>
+                                        <Activity className="animate-spin" size={18} />
+                                        AUTHENTICATING...
                                     </>
                                 ) : (
                                     <>
-                                        <Crosshair size={16} />
-                                        <span>INITIALIZE SESSION</span>
-                                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                        <Crosshair size={18} className="group-hover:scale-110 transition-transform" />
+                                        INITIALIZE SESSION
+                                        <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                     </>
                                 )}
                             </span>
                         </button>
                     </form>
 
-                    {/* Footer / Boot Text */}
-                    <div className="mt-8 pt-4 border-t border-white/5 flex justify-between items-center opacity-60">
-                        <div className="text-[9px] font-mono text-primary/80">
-                            {bootText}<span className="animate-pulse">_</span>
+                    <div className="mt-8 pt-6 border-t border-blue-500/20">
+                        <div className="text-xs font-mono text-blue-400/70">
+                            {bootText}
+                            <span className="animate-pulse">_</span>
                         </div>
-
-                        {/* DEV BACKDOOR: Only click this if DB is empty */}
-                        <button
-                            onClick={handleDevSeed}
-                            className="flex items-center gap-1 text-[8px] text-slate-600 hover:text-red-400 transition-colors uppercase tracking-widest"
-                            title="Dev: Seed Admin to DB"
-                            disabled={isSeedPending}
-                        >
-                            <Database size={10} />
-                            {isSeedPending ? "Seeding..." : "DB_SEED"}
-                        </button>
                     </div>
-                </div>
-
-                <div className="text-center mt-6 text-[10px] text-slate-600 font-mono">
-                    SECURE TRAFFIC MANAGEMENT SYSTEMS © 2026
                 </div>
             </div>
         </div>
