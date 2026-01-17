@@ -4,6 +4,8 @@ const cors = require('cors');
 
 const authRoutes = require('./src/routes/auth');
 const adminOperatorsRoutes = require("./src/routes/admin.operators");
+const adminStreams = require("./src/routes/admin.streams");
+const streams = require("./src/routes/streams");
 const app = express();
 
 
@@ -20,6 +22,8 @@ app.get('/health', (req, res) => {
 
 
 app.use('/api/auth', authRoutes);
+app.use("/api/admin", adminStreams);
+app.use("/api", streams);
 app.use("/api/admin", adminOperatorsRoutes);
 
 app.use((req, res) => {
