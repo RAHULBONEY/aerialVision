@@ -39,7 +39,7 @@ export default function Operators() {
 
 
 
-    console.log(operators)
+
 
     const filteredOperators = operators.filter(operator => {
         const matchesSearch =
