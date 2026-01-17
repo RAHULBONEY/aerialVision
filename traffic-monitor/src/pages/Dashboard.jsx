@@ -1,5 +1,5 @@
 import React from 'react';
-import VideoPanel from "@/components/panels/VideoPanel";
+
 import { useDashboardStats, useIncidents } from "@/hooks/useDashboardQueries";
 import {
     Activity,

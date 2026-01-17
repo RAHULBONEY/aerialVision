@@ -13,9 +13,9 @@ import {
   where,
   Timestamp 
 } from 'firebase/firestore';
-import { db } from '@/firebase/config';
+import { db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/firebase/config';
+import { auth } from '@/lib/firebase';
 
 // ===== USERS =====
 export const useUsers = () => {
@@ -38,32 +38,69 @@ export const useCreateUser = () => {
   
   return useMutation({
     mutationFn: async (userData) => {
-      // Create auth user
-      const authUser = await createUserWithEmailAndPassword(
-        auth, 
-        userData.email, 
-        'TempPass123!' // You'll want to generate this properly
-      );
+      console.log('🚀 Creating user with data:', userData);
       
-      // Create Firestore document
-      const userDoc = {
-        name: userData.name,
-        email: userData.email,
+      const token = localStorage.getItem('aerialvision_token');
+      
+      if (!token) {
+        console.error('❌ No authentication token found');
+        throw new Error('Authentication required. Please login first.');
+      }
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      console.log('🌐 API URL:', `${apiUrl}/auth/users`);
+      
+      const payload = {
+        name: userData.name?.trim(),
+        email: userData.email?.toLowerCase(),
         role: userData.role,
-        status: 'ACTIVE',
-        accessLevel: userData.role === 'ADMIN' ? 5 : userData.role === 'EMERGENCY' ? 3 : 2,
-        createdAt: Timestamp.now(),
-        uid: authUser.user.uid
+        department: userData.department || '',
+        password: userData.password || 'TempPass123!'
       };
       
-      await addDoc(collection(db, 'users'), userDoc);
-      return userDoc;
+      console.log('📦 Sending payload:', payload);
+      
+      const response = await fetch(`${apiUrl}/auth/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      console.log('📡 Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error Response:', errorText);
+        
+        let errorMessage;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData.error || `Server error: ${response.status}`;
+        } catch {
+          errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Success Response:', result);
+      
+      return result.data || result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['users']);
+    onSuccess: (data) => {
+      console.log('🎉 User created successfully:', data);
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error) => {
+      console.error('💥 User creation FAILED:', error.message);
     }
   });
 };
+
 
 // ===== SYSTEM HEALTH =====
 export const useSystemHealth = () => {

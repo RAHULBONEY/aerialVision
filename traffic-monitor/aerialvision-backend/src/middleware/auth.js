@@ -1,70 +1,51 @@
-const jwt = require('jsonwebtoken');
-const { admin } = require('../config/firebase');
-const { sendUnauthorized, sendError } = require('../utils/responses');
-const { logger } = require('../utils/logger');
 
-/**
- * Verify Firebase JWT token and extract user info
- */
+
+const { admin, db } = require("../config/firebase");
+
 const authenticateToken = async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header) {
+    return res.status(401).json({ success: false, message: "No token" });
+  }
+
+  const token = header.split(" ")[1];
+
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+   
+    const decoded = await admin.auth().verifyIdToken(token);
 
-    if (!token) {
-      return sendUnauthorized(res, 'Access token required');
-    }
-
-    // Verify Firebase ID token
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    
-    // Fetch additional user data from Firestore
-    const userDoc = await admin.firestore()
-      .collection('users')
-      .doc(decodedToken.uid)
+   
+    const snap = await db
+      .collection("users")
+      .where("uid", "==", decoded.uid)
+      .limit(1)
       .get();
 
-    if (!userDoc.exists) {
-      return sendUnauthorized(res, 'User not found in system');
+    if (snap.empty) {
+      return res.status(401).json({ success: false, message: "User not found" });
     }
 
-    const userData = userDoc.data();
+    const userData = snap.docs[0].data();
+
     
-    // Check if user is active
-    if (userData.status !== 'ACTIVE') {
-      return sendUnauthorized(res, 'Account suspended or inactive');
-    }
-
-    // Attach user info to request
     req.user = {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
+      uid: decoded.uid,
+      email: decoded.email,
       role: userData.role,
-      name: userData.name,
+      accessLevel:
+        typeof userData.accessLevel === "number"
+          ? userData.accessLevel
+          : 1,
       status: userData.status,
-      accessLevel: userData.accessLevel || 1
+      name: userData.name,
     };
 
-    logger.debug('User authenticated:', { 
-      uid: req.user.uid, 
-      role: req.user.role,
-      email: req.user.email 
-    });
-
     next();
-  } catch (error) {
-    logger.error('Authentication failed:', error);
-    
-    if (error.code === 'auth/id-token-expired') {
-      return sendUnauthorized(res, 'Token expired');
-    }
-    
-    if (error.code === 'auth/invalid-id-token') {
-      return sendUnauthorized(res, 'Invalid token');
-    }
-    
-    return sendError(res, 'Authentication error', 401);
+  } catch (err) {
+    console.error("Auth error:", err);
+    return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
 
 module.exports = { authenticateToken };
+
