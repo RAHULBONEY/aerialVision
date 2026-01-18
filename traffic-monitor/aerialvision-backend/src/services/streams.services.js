@@ -17,7 +17,7 @@ exports.create = async (payload, userId) => {
     createdBy: userId,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
-
+  console.log("🚀 ATTEMPTING CONNECTION TO AI ENGINE WITH HEADERS...");
   try {
     const response = await fetch(`${AI_ENGINE_URL}/streams/start`, {
       method: "POST",
