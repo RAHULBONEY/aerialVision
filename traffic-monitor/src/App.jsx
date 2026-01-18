@@ -9,7 +9,7 @@ import Streams from "@/pages/admin/Streams";
 // import ModelConfig from "@/pages/admin/ModelConfig";
 // import AuditLogs from "@/pages/admin/AuditLogs";
 // import LoginHistory from "@/pages/admin/LoginHistory";
-// import Metrics from "@/pages/admin/Metrics";
+import Metrics from "@/pages/admin/Metrics";
 
 import RequireAuth from "@/components/common/RequireAuth";
 
@@ -34,7 +34,7 @@ export default function App() {
         <Route path="model" element={<ModelConfig />} />
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="login-history" element={<LoginHistory />} /> */}
-        {/* <Route path="metrics" element={<Metrics />} /> */}
+        <Route path="metrics" element={<Metrics />} />
         <Route path="streams" element={<Streams />} />
       </Route>
 
