@@ -3,9 +3,7 @@ const db = admin.firestore();
 const fetch = require("node-fetch");
 
 const COLLECTION = "streams";
-
-
-// services/streams.services.js
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://localhost:8001";
 exports.create = async (payload, userId) => {
   const { name, type, sourceUrl, model, assignedRoles } = payload;
 
@@ -21,7 +19,7 @@ exports.create = async (payload, userId) => {
   });
 
   try {
-    const response = await fetch("http://localhost:8001/streams/start", {
+    const response = await fetch(`${AI_ENGINE_URL}/streams/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: ref.id, sourceUrl, model }),
@@ -84,7 +82,7 @@ exports.remove = async (id) => {
 
   
   if (data.engineStreamId) {
-    await fetch(`http://localhost:8001/streams/${data.engineStreamId}/stop`, {
+    await fetch(`${AI_ENGINE_URL}/streams/${data.engineStreamId}/stop`, {
       method: "POST",
     });
   }
