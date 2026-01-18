@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "@/pages/Login";
 
 import AdminLayout from "@/components/layout/AdminLayout";
-import Overview from "@/pages/admin/Overview";
+import Overview from "@/pages/admin/OverView";
 import Operators from "@/pages/admin/Operators";
 // import Roles from "@/pages/admin/Roles";
 import Streams from "@/pages/admin/Streams";

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const {getProfile,logout}=require("../controllers/authController.js")
+const {getProfile,logout}=require("../controllers/authcontroller.js")
 
 router.use(authenticateToken);
 
