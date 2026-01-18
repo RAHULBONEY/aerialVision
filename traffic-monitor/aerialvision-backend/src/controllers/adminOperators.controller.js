@@ -1,4 +1,4 @@
-const { data } = require("react-router-dom");
+
 const adminOperatorsService = require("../services/adminOperators.service");
 
 exports.listOperators = async (req, res) => {
