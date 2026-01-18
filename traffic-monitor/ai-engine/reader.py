@@ -1,28 +1,20 @@
-# reader.py
 import cv2
 import time
 import threading
-import psutil
-import yt_dlp  
+import yt_dlp
 
 class StreamReader:
-    def __init__(self, source_url, engine, fps_limit=10, max_queue=1):
+    def __init__(self, source_url, engine):
         self.source_url = source_url
         self.engine = engine
-        self.fps_limit = fps_limit
         
-        # Frame dropping
-        self.frame_interval = 1.0 / fps_limit
-        self.last_frame_time = 0
+        # STREAMING SETTINGS
+        self.frame_interval = 1.0 / 30  # Target 30 FPS stream
+        self.skip_counter = 0
+        self.ai_interval = 2  # Run AI every 2nd frame (Smooths video)
         
-        # GPU thermal protection
-        self.gpu_temp_threshold = 80  # Celsius
-        self.emergency_cooldown = False
-        
-        # Shared variable + lock for broadcasting
         self.latest_frame = None
         self.lock = threading.Lock()
-        
         self.running = False
         self.thread = None
         
@@ -38,95 +30,72 @@ class StreamReader:
             self.thread.join()
 
     def _get_youtube_stream_url(self, url):
-        """Extracts the direct .m3u8 stream URL from a YouTube link"""
         try:
-            print(f"🔍 Resolving YouTube URL: {url}")
-            ydl_opts = {
-                'format': 'best',
-                'quiet': True,
-                'no_warnings': True,
-            }
+            ydl_opts = {'format': 'best', 'quiet': True}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 return info['url']
-        except Exception as e:
-            print(f"❌ Error resolving YouTube URL: {e}")
-            return url  # Fallback to original if failed
-
-    def _check_gpu_temperature(self):
-        if self.engine.device != "cuda":
-            return False
-        try:
-            import nvidia_smi
-            nvidia_smi.nvmlInit()
-            handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
-            temp = nvidia_smi.nvmlDeviceGetTemperature(handle, nvidia_smi.NVML_TEMPERATURE_GPU)
-            if temp > self.gpu_temp_threshold:
-                print(f"🔥 GPU THERMAL THROTTLE: {temp}°C")
-                return True
-            return False
         except:
-            return False
+            return url
 
     def _read_loop(self):
-        # 1. Resolve URL if it's YouTube
         real_url = self.source_url
         if "youtube.com" in self.source_url or "youtu.be" in self.source_url:
+            print(f"🔍 Resolving YouTube: {self.source_url}")
             real_url = self._get_youtube_stream_url(self.source_url)
-            print(f"✅ Resolved URL: {real_url[:50]}...")
 
         cap = cv2.VideoCapture(real_url)
-        
-        # Check if opened successfully
-        if not cap.isOpened():
-            print(f"❌ Failed to open video source: {real_url[:50]}...")
         
         while self.running:
             ret, frame = cap.read()
             if not ret:
-                print("⚠️ Stream packet loss or ended. Retrying...")
+                print("⚠️ Stream dropped, reconnecting...")
                 time.sleep(1)
-                # Optional: Re-resolve URL here if it expired
                 cap = cv2.VideoCapture(real_url)
                 continue
-                
-            if self._check_gpu_temperature():
-                self.emergency_cooldown = True
-                time.sleep(1.0)
-                continue
-                
-            current_time = time.time()
-            if current_time - self.last_frame_time < self.frame_interval:
-                time.sleep(0.01)
-                continue 
-                
-            self.last_frame_time = current_time
             
-            # Inference
-            processed = self.engine.run(frame)
+            # OPTIMIZATION: Frame Skipping
+            # We run AI on frame 1, display raw frame 2, run AI on frame 3...
+            # This makes the video look 2x smoother.
+            self.skip_counter += 1
+            if self.skip_counter % self.ai_interval == 0:
+                # Run AI (This now returns the small 640px image)
+                processed = self.engine.run(frame)
+                with self.lock:
+                    self.latest_frame = processed
+            else:
+                # Just resize and show raw frame (for smoothness)
+                # We must resize it to match the AI frame size (640px)
+                # otherwise the stream jumps between big and small
+                h, w = frame.shape[:2]
+                ratio = h/w
+                small_frame = cv2.resize(frame, (640, int(640*ratio)))
+                
+                with self.lock:
+                    # If we have no AI frame yet, show this one
+                    if self.latest_frame is None:
+                        self.latest_frame = small_frame
+                    # (Optional: You could just yield the old AI frame to show "stuck" boxes 
+                    # on new video, but showing raw video is smoother)
             
-            # Update shared frame safely
-            with self.lock:
-                self.latest_frame = processed
+            # Control FPS to prevent CPU overload
+            time.sleep(0.01)
         
         cap.release()
         
     def stream(self):
         while True:
-            frame_to_send = None
             with self.lock:
-                if self.latest_frame is not None:
-                    frame_to_send = self.latest_frame
+                frame = self.latest_frame
             
-            if frame_to_send is None:
+            if frame is None:
                 time.sleep(0.1)
                 continue
             
-            try:
-                _, buffer = cv2.imencode('.jpg', frame_to_send)
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-            except:
-                pass
+            # Compress to JPG (Lower quality = Faster Stream)
+            _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+            
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             
             time.sleep(self.frame_interval)

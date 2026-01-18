@@ -72,12 +72,12 @@ def check_gpu_memory():
 
 def start_stream(stream_id, source_url, model_name):
     MODEL_PATHS = {
-        "mark-3":"../../best.pt",
-        "mark-2": "../../mark2.pt",
-        "mark-2.5": "../../mark2.5.pt",
-        "mark-1": "../../mark1.pt"
+        "mark-3":"./best.pt",
+        "mark-2": "./mark2.pt",
+        "mark-2.5": "./mark2.5.pt",
+        "mark-1": "./mark1.pt"
     }
-    model_path = MODEL_PATHS.get(model_name, "../../mark2.pt")
+    model_path = MODEL_PATHS.get(model_name, "./mark2.pt")
     
     abs_path = os.path.abspath(model_path)
     if not os.path.exists(abs_path):
