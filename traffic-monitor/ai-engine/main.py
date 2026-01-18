@@ -6,6 +6,9 @@ from fastapi.responses import StreamingResponse
 from streams import STREAMS, start_stream, stop_stream
 from fastapi.responses import JSONResponse
 import uuid
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
 
@@ -62,7 +65,8 @@ def start(payload: dict):
     stream_id = payload.get("id") or str(uuid.uuid4())
     source_url = payload["sourceUrl"]
     model = payload.get("model", "mark-2")
-
+    public_url = os.getenv("PUBLIC_URL", "http://localhost:8001")
+    print(public_url)
     if stream_id in STREAMS:
         raise HTTPException(status_code=400, detail="Stream already running")
 
@@ -73,7 +77,7 @@ def start(payload: dict):
         return {"success": False, "error": str(e)}
     return {
         "streamId": stream_id,
-        "aiEngineUrl": f"http://localhost:8001/streams/{stream_id}"
+        "aiEngineUrl": f"{public_url}/streams/{stream_id}"
     }
 
 @app.get("/streams/{stream_id}")
