@@ -16,14 +16,11 @@ export default function StreamDetailModal({ stream, open, onClose }) {
 
     useEffect(() => {
         if (open && stream) {
-            if (stream.aiEngineUrl) {
-                const urlWithTimestamp = `${stream.aiEngineUrl}?t=${Date.now()}`;
-                setStreamUrl(urlWithTimestamp);
-                setVideoLoaded(false);
-                setVideoError(null);
-            } else {
-                setVideoError("Stream URL is missing from database record.");
-            }
+
+            const API_URL = import.meta.env.VITE_API_URL || "https://smartcity-backend-5y3s.onrender.com";
+            const proxyUrl = `${API_URL}/api/admin/streams/proxy/${stream.engineStreamId}`;
+
+            setStreamUrl(proxyUrl);
         }
     }, [open, stream]);
 
