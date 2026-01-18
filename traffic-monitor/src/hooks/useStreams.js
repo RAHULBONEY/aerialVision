@@ -8,28 +8,33 @@ import { useState } from "react";
 
 
 export function useStreams() {
-    const [streams, setStreams] = useState([]);
-
-    const createStream = (stream) => {
-        setStreams((prev) => [stream, ...prev]);
-    };
-
-    const stopStream = async (streamId) => {
-        await fetch(`http://localhost:8001/streams/${streamId}/stop`, {
-            method: "POST",
-        });
-
-        setStreams((prev) => prev.filter((s) => s.id !== streamId));
-    };
-
-    return {
-        data: streams,
-        createStream,
-        stopStream,
-    };
+  return useQuery({
+    queryKey: ["streams"],
+    queryFn: async () => {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(`${API}/api/admin/streams`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      return json.data;
+    },
+  });
 }
 
+export function useStopStream() {
+  const qc = useQueryClient();
 
+  return useMutation({
+    mutationFn: async (id) => {
+      const token = await auth.currentUser.getIdToken();
+      await fetch(`${API}/api/admin/streams/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    onSuccess: () => qc.invalidateQueries(["streams"]),
+  });
+}
 
 export function useCreateStream() {
   const qc = useQueryClient();
@@ -46,6 +51,26 @@ export function useCreateStream() {
         body: JSON.stringify(payload),
       });
       return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries(["streams"]),
+  });
+}
+export function useToggleStream() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }) => {
+      const token = await auth.currentUser.getIdToken();
+      await fetch(`${API}/api/admin/streams/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: status === "active" ? "inactive" : "active",
+        }),
+      });
     },
     onSuccess: () => qc.invalidateQueries(["streams"]),
   });

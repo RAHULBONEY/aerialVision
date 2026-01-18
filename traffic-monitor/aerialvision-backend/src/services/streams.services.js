@@ -1,45 +1,100 @@
 const admin = require("firebase-admin");
 const db = admin.firestore();
+const fetch = require("node-fetch");
 
 const COLLECTION = "streams";
 
-exports.create = async (data, createdBy) => {
-  const required = ["name", "type", "sourceUrl", "aiEngineUrl"];
-  required.forEach(f => {
-    if (!data[f]) throw new Error(`${f} is required`);
+
+// services/streams.services.js
+exports.create = async (payload, userId) => {
+  const { name, type, sourceUrl, model, assignedRoles } = payload;
+
+  const ref = await db.collection(COLLECTION).add({
+    name,
+    type,
+    sourceUrl,
+    model,
+    assignedRoles,
+    status: "active",
+    createdBy: userId,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  const doc = {
-    ...data,
-    status: "ACTIVE",
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    createdBy
-  };
+  try {
+    const response = await fetch("http://localhost:8001/streams/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: ref.id, sourceUrl, model }),
+    });
 
-  const ref = await db.collection(COLLECTION).add(doc);
-  return { id: ref.id, ...doc };
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Engine HTTP ${response.status}: ${errorText}`);
+      throw new Error(`AI Engine error: HTTP ${response.status} - ${errorText.substring(0, 100)}`);
+    }
+
+    const engineRes = await response.json();
+    console.log("Engine Resposne",engineRes);
+  
+    if (!engineRes.streamId) {
+      throw new Error(`Invalid engine response: ${JSON.stringify(engineRes)}`);
+    }
+
+    await ref.update({
+      status: "active",
+      engineStreamId: engineRes.streamId,
+      aiEngineUrl: engineRes.aiEngineUrl,
+    });
+
+    const doc = await ref.get();
+    return { id: doc.id, ...doc.data() };
+
+  } catch (err) {
+    console.error("Engine start failed:", err.message);
+    await ref.update({ 
+      status: "ERROR", 
+      error: err.message 
+    });
+    throw err;
+  }
 };
 
 exports.list = async (user) => {
-  let query = db.collection(COLLECTION).where("status", "!=", "DELETED");
-
-  const snap = await query.get();
+  const snap = await db
+    .collection(COLLECTION)
+    .where("status", "!=", "DELETED")
+    .get();
 
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(s =>
-      s.assignedRoles?.includes(user.role) || user.role === "ADMIN"
+      user.role === "ADMIN" ||
+      s.assignedRoles?.includes(user.role)
     );
 };
 
-exports.update = async (id, updates) => {
-  await db.collection(COLLECTION).doc(id).update(updates);
-  const doc = await db.collection(COLLECTION).doc(id).get();
-  return { id, ...doc.data() };
+exports.remove = async (id) => {
+  const ref = db.collection(COLLECTION).doc(id);
+  const doc = await ref.get();
+
+  if (!doc.exists) throw new Error("Stream not found");
+
+  const data = doc.data();
+
+  
+  if (data.engineStreamId) {
+    await fetch(`http://localhost:8001/streams/${data.engineStreamId}/stop`, {
+      method: "POST",
+    });
+  }
+
+  await ref.update({ status: "DELETED" });
 };
 
-exports.remove = async (id) => {
-  await db.collection(COLLECTION).doc(id).update({
-    status: "DELETED"
-  });
+exports.update = async (id, updates) => {
+  const ref = db.collection(COLLECTION).doc(id);
+  await ref.update(updates);
+  const doc = await ref.get();
+  return { id, ...doc.data() };
 };

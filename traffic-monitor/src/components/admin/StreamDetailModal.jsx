@@ -1,0 +1,412 @@
+import { useState, useEffect } from "react";
+import {
+    X, BarChart, AlertTriangle, Clock, Users, Activity,
+    Download, Video, Wifi, Settings, Zap, Eye, Shield,
+    Maximize2, Minimize2, RefreshCw, Volume2, VolumeX
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export default function StreamDetailModal({ stream, open, onClose }) {
+    const [videoLoaded, setVideoLoaded] = useState(false);
+    const [videoError, setVideoError] = useState(null);
+    const [streamUrl, setStreamUrl] = useState(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
+    const [activeTab, setActiveTab] = useState("analytics");
+
+    useEffect(() => {
+        if (open && stream) {
+            if (stream.aiEngineUrl) {
+                const urlWithTimestamp = `${stream.aiEngineUrl}?t=${Date.now()}`;
+                setStreamUrl(urlWithTimestamp);
+                setVideoLoaded(false);
+                setVideoError(null);
+            } else {
+                setVideoError("Stream URL is missing from database record.");
+            }
+        }
+    }, [open, stream]);
+
+    if (!open || !stream) return null;
+
+    const modelConfig = {
+        "mark-1": { color: "from-gray-500 to-gray-600", accuracy: "85%" },
+        "mark-2": { color: "from-blue-500 to-blue-600", accuracy: "92%" },
+        "mark-2.5": { color: "from-purple-500 to-purple-600", accuracy: "94%" },
+        "mark-3": { color: "from-emerald-500 to-teal-600", accuracy: "96%" },
+    };
+
+    const model = modelConfig[stream.model] || modelConfig["mark-3"];
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className={cn(
+                "mx-4 my-8 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl transition-all duration-300",
+                isFullscreen
+                    ? "w-full h-full max-w-none max-h-none"
+                    : "w-full max-w-5xl max-h-[90vh] overflow-hidden"
+            )}>
+                {/* Header - Compact */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-3 h-8 rounded-full bg-gradient-to-b ${model.color}`}></div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                                {stream.name}
+                            </h2>
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                    <Video className="w-3 h-3" />
+                                    {stream.type === "WEBCAM" ? "Local Camera" : "RTSP Stream"}
+                                </span>
+                                <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                <span className="text-gray-500 dark:text-gray-400">
+                                    Live • {stream.metrics?.fps || "30"} FPS
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsMuted(!isMuted)}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            title={isMuted ? "Unmute" : "Mute"}
+                        >
+                            {isMuted ? (
+                                <VolumeX className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            ) : (
+                                <Volume2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            )}
+                        </button>
+
+                        <button
+                            onClick={() => setIsFullscreen(!isFullscreen)}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                        >
+                            {isFullscreen ? (
+                                <Minimize2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            ) : (
+                                <Maximize2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            )}
+                        </button>
+
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            title="Close"
+                        >
+                            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="flex flex-col lg:flex-row h-[calc(90vh-72px)]">
+                    {/* Left: Video Feed */}
+                    <div className="flex-1 p-4 overflow-hidden">
+                        <div className="relative bg-black rounded-xl overflow-hidden h-full">
+                            {streamUrl ? (
+                                <>
+                                    <img
+                                        src={streamUrl}
+                                        className="w-full h-full object-contain"
+                                        alt="Live Stream"
+                                        onLoad={() => setVideoLoaded(true)}
+                                        onError={() => setVideoError("Failed to load stream connection.")}
+                                    />
+
+                                    {/* Video Overlay Controls */}
+                                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full">
+                                        <button className="p-2 hover:bg-white/10 rounded-full">
+                                            <RefreshCw className="w-4 h-4 text-white" />
+                                        </button>
+                                        <div className="w-24 h-1 bg-gray-600 rounded-full overflow-hidden">
+                                            <div className="w-1/2 h-full bg-white"></div>
+                                        </div>
+                                        <span className="text-xs text-white">02:34 / 05:00</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 border-4 border-gray-600 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+                                        <p className="text-white">Initializing stream...</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Loading Indicator */}
+                            {!videoLoaded && !videoError && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                                        <p className="text-white">Connecting to stream...</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Error State */}
+                            {videoError && (
+                                <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                                    <div className="text-center p-6">
+                                        <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                                        <h3 className="text-white font-medium mb-2">Stream Connection Failed</h3>
+                                        <p className="text-gray-300 text-sm mb-4">{videoError}</p>
+                                        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">
+                                            Retry Connection
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right: Sidebar */}
+                    <div className="lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 overflow-y-auto">
+                        {/* Tabs */}
+                        <div className="flex border-b border-gray-200 dark:border-gray-800">
+                            {["analytics", "details", "alerts"].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={cn(
+                                        "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                                        activeTab === tab
+                                            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
+                                            : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                                    )}
+                                >
+                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="p-4 space-y-6">
+                            {/* Analytics Tab */}
+                            {activeTab === "analytics" && (
+                                <>
+                                    {/* Model Card */}
+                                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                                <Zap className="w-4 h-4" />
+                                                AI Model
+                                            </h3>
+                                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                                                Active
+                                            </span>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">Version</span>
+                                                <span className="font-semibold text-gray-900 dark:text-white">{stream.model || "Mark-3"}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">Accuracy</span>
+                                                <span className="font-bold text-green-600 dark:text-green-400">94.2%</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">Inference Time</span>
+                                                <span className="font-medium text-gray-900 dark:text-white">24ms</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Performance Metrics */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                            <Activity className="w-4 h-4" />
+                                            Performance
+                                        </h4>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">FPS</div>
+                                                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                                                    {stream.metrics?.fps || "30"}
+                                                </div>
+                                            </div>
+                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Latency</div>
+                                                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                                                    {stream.metrics?.latency || "120"}ms
+                                                </div>
+                                            </div>
+                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Detections</div>
+                                                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                                                    {stream.metrics?.detections || "42"}
+                                                </div>
+                                            </div>
+                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Alerts</div>
+                                                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                                    {stream.metrics?.alerts || "3"}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Traffic Stats */}
+                                    <div className="space-y-3">
+                                        <h4 className="font-semibold text-gray-900 dark:text-white">Traffic Analytics</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600 dark:text-gray-400">Vehicle Count</span>
+                                                <span className="font-medium text-gray-900 dark:text-white">142</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '75%' }}></div>
+                                            </div>
+
+                                            <div className="flex justify-between text-sm mt-3">
+                                                <span className="text-gray-600 dark:text-gray-400">Congestion Level</span>
+                                                <span className="font-medium text-amber-600 dark:text-amber-400">Moderate</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                                <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: '60%' }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Details Tab */}
+                            {activeTab === "details" && (
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                            <Settings className="w-4 h-4" />
+                                            Stream Details
+                                        </h4>
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Wifi className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                                    <span className="font-medium text-gray-900 dark:text-white">Active • Running</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-sm text-gray-600 dark:text-gray-400">Uptime</span>
+                                                </div>
+                                                <span className="font-medium text-gray-900 dark:text-white">2h 34m</span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Eye className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-sm text-gray-600 dark:text-gray-400">Visibility</span>
+                                                </div>
+                                                <span className="font-medium text-gray-900 dark:text-white">Clear</span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Shield className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-sm text-gray-600 dark:text-gray-400">Access Roles</span>
+                                                </div>
+                                                <span className="font-medium text-gray-900 dark:text-white">3 roles</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Stream Information */}
+                                    <div className="space-y-3">
+                                        <h4 className="font-semibold text-gray-900 dark:text-white">Information</h4>
+                                        <div className="text-sm space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600 dark:text-gray-400">Stream Type</span>
+                                                <span className="font-medium text-gray-900 dark:text-white">{stream.type}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600 dark:text-gray-400">Resolution</span>
+                                                <span className="font-medium text-gray-900 dark:text-white">1920×1080</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600 dark:text-gray-400">Bitrate</span>
+                                                <span className="font-medium text-gray-900 dark:text-white">4.5 Mbps</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600 dark:text-gray-400">Location</span>
+                                                <span className="font-medium text-gray-900 dark:text-white">Junction 12</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Alerts Tab */}
+                            {activeTab === "alerts" && (
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                                        Recent Alerts
+                                    </h4>
+
+                                    <div className="space-y-3">
+                                        {[
+                                            { type: "Traffic Congestion", time: "2 min ago", severity: "high" },
+                                            { type: "Vehicle Stopped", time: "5 min ago", severity: "medium" },
+                                            { type: "Accident Detected", time: "12 min ago", severity: "critical" },
+                                            { type: "Speed Violation", time: "15 min ago", severity: "low" },
+                                            { type: "Wrong Way", time: "22 min ago", severity: "medium" },
+                                        ].map((alert, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <span className="font-medium text-gray-900 dark:text-white">{alert.type}</span>
+                                                    <span className={cn(
+                                                        "text-xs px-2 py-1 rounded-full",
+                                                        alert.severity === "critical" && "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+                                                        alert.severity === "high" && "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300",
+                                                        alert.severity === "medium" && "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+                                                        alert.severity === "low" && "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                                                    )}>
+                                                        {alert.severity}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                                    <span>{alert.time}</span>
+                                                    <button className="text-blue-600 dark:text-blue-400 hover:underline">
+                                                        View Details
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="sticky bottom-0 pt-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+                                <div className="flex gap-2">
+                                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-medium rounded-lg transition-all">
+                                        <Download className="w-4 h-4" />
+                                        Export Report
+                                    </button>
+                                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <BarChart className="w-4 h-4" />
+                                        Analytics
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
