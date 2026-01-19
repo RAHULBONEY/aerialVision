@@ -5,6 +5,7 @@ const cors = require('cors');
 const authRoutes = require('./src/routes/auth');
 const adminOperatorsRoutes = require("./src/routes/admin.operators");
 const adminStreams = require("./src/routes/admin.streams");
+const configRoutes = require("./src/routes/config.routes");
 const streams = require("./src/routes/streams");
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/auth', authRoutes);
 app.use("/api/admin", adminStreams);
 app.use("/api", streams);
 app.use("/api/admin", adminOperatorsRoutes);
+app.use("/api/config", configRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });

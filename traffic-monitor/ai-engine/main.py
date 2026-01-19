@@ -1,16 +1,26 @@
-from fastapi import FastAPI, HTTPException
-import torch  
-import psutil
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from streams import STREAMS, start_stream, stop_stream
-from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse
+from ultralytics import YOLO
+import torch
+import psutil
+import cv2
+import numpy as np
+import yt_dlp
 import uuid
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
+try:
+    print("⏳ Loading Probe Model (Mark-3)...")
+    probe_model = YOLO("best.pt")
+    print("✅ Probe Model Loaded.")
+except Exception as e:
+    print(f"⚠️ Warning: Probe model failed to load: {e}")
+    probe_model = None
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,6 +30,77 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"] 
 )
+
+def get_stream_url(url):
+    """Resolve YouTube URL to direct stream link using yt-dlp"""
+    if "youtube.com" not in url and "youtu.be" not in url:
+        return url 
+    
+    try:
+        ydl_opts = {'format': 'best[ext=mp4]', 'quiet': True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return info['url']
+    except Exception as e:
+        print(f"❌ URL Resolution Failed: {e}")
+        return None
+
+@app.post("/probe")
+async def probe_view_type(request: Request):
+    """
+    Analyzes ONE frame to decide if the view is AERIAL or GROUND.
+    
+    """
+    if not probe_model:
+        return JSONResponse({"viewType": "GROUND", "reason": "Probe model not loaded"})
+
+    try:
+        body = await request.json()
+        source_url = body.get("sourceUrl")
+        print(f"🕵️ Probing Source: {source_url}")
+
+       
+        real_url = get_stream_url(source_url)
+        if not real_url:
+            return JSONResponse({"viewType": "GROUND", "reason": "Could not resolve URL"})
+
+        
+        cap = cv2.VideoCapture(real_url)
+        ret, frame = cap.read()
+        cap.release()
+
+        if not ret:
+            return JSONResponse({"viewType": "GROUND", "reason": "Stream offline or unreadable"})
+
+        
+        results = probe_model(frame, imgsz=640, verbose=False)[0]
+        
+       
+        boxes = results.boxes.xywhn.cpu().numpy() 
+        
+        if len(boxes) == 0:
+            return JSONResponse({"viewType": "GROUND", "reason": "No objects detected"})
+
+        
+        areas = boxes[:, 2] * boxes[:, 3] 
+        avg_area = np.mean(areas)
+        
+        print(f"📊 Probe Result: Avg Object Area = {avg_area:.5f}")
+
+        if avg_area < 0.008: 
+            return JSONResponse({
+                "viewType": "AERIAL", 
+                "reason": f"Detected small objects (Scale: {avg_area:.4f}) indicating High Altitude."
+            })
+        else:
+            return JSONResponse({
+                "viewType": "GROUND", 
+                "reason": f"Detected large objects (Scale: {avg_area:.4f}) indicating Street Level."
+            })
+
+    except Exception as e:
+        print(f"❌ Probe Error: {e}")
+        return JSONResponse({"viewType": "GROUND", "reason": "Probe failed, defaulting to safe mode."})
 @app.get("/gpu/status")
 def gpu_status():
     status = {
@@ -103,3 +184,29 @@ def stop(stream_id: str):
     if not stop_stream(stream_id):
         raise HTTPException(status_code=404, detail="Stream not found")
     return {"success": True}
+
+if __name__ == "__main__":
+    import uvicorn
+    from pyngrok import ngrok
+    import os
+
+   
+    PORT = 8001
+
+   
+    try:
+        tunnel = ngrok.connect(PORT)
+        public_url = tunnel.public_url
+        print("==================================================")
+        print(f"🚀 LOCAL PROBE IS LIVE AT: {public_url}")
+        print("==================================================")
+
+        
+        os.environ["PUBLIC_URL"] = public_url
+        
+    except Exception as e:
+        print(f"⚠️ Could not start Ngrok: {e}")
+        print("Falling back to localhost...")
+
+   
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
