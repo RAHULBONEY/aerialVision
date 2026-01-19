@@ -1,4 +1,4 @@
-// src/hooks/useAdminQueries.js - Enhanced version
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   collection, 
@@ -17,7 +17,7 @@ import { db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-// ===== USERS =====
+
 export const useUsers = () => {
   return useQuery({
     queryKey: ['users'],
@@ -38,7 +38,7 @@ export const useCreateUser = () => {
   
   return useMutation({
     mutationFn: async (userData) => {
-      console.log('🚀 Creating user with data:', userData);
+      // console.log('🚀 Creating user with data:', userData);
       
       const token = localStorage.getItem('aerialvision_token');
       
@@ -48,7 +48,7 @@ export const useCreateUser = () => {
       }
       
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
-      console.log('🌐 API URL:', `${apiUrl}/auth/users`);
+      // console.log('🌐 API URL:', `${apiUrl}/auth/users`);
       
       const payload = {
         name: userData.name?.trim(),
@@ -58,7 +58,7 @@ export const useCreateUser = () => {
         password: userData.password || 'TempPass123!'
       };
       
-      console.log('📦 Sending payload:', payload);
+      // console.log('📦 Sending payload:', payload);
       
       const response = await fetch(`${apiUrl}/auth/users`, {
         method: 'POST',
@@ -69,7 +69,7 @@ export const useCreateUser = () => {
         body: JSON.stringify(payload)
       });
       
-      console.log('📡 Response status:', response.status);
+      // console.log('📡 Response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -87,12 +87,12 @@ export const useCreateUser = () => {
       }
       
       const result = await response.json();
-      console.log('✅ Success Response:', result);
+      // console.log('✅ Success Response:', result);
       
       return result.data || result;
     },
     onSuccess: (data) => {
-      console.log('🎉 User created successfully:', data);
+      // console.log('🎉 User created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error) => {
@@ -102,12 +102,12 @@ export const useCreateUser = () => {
 };
 
 
-// ===== SYSTEM HEALTH =====
+
 export const useSystemHealth = () => {
   return useQuery({
     queryKey: ['systemHealth'],
     queryFn: async () => {
-      // Mock data - replace with real system monitoring
+      
       return {
         databaseStatus: 'OPERATIONAL',
         apiLatency: '23ms',
@@ -119,11 +119,11 @@ export const useSystemHealth = () => {
         gpuUsage: 78
       };
     },
-    refetchInterval: 5000 // Refresh every 5 seconds
+    refetchInterval: 5000 
   });
 };
 
-// ===== AUDIT LOGS =====
+
 export const useAuditLogs = () => {
   return useQuery({
     queryKey: ['auditLogs'],
@@ -141,7 +141,7 @@ export const useAuditLogs = () => {
   });
 };
 
-// ===== INCIDENTS (for Police) =====
+
 export const useIncidents = () => {
   return useQuery({
     queryKey: ['incidents'],
@@ -158,7 +158,7 @@ export const useIncidents = () => {
   });
 };
 
-// ===== AMBULANCE TRACKING (for Hospital) =====
+
 export const useAmbulanceTracking = () => {
   return useQuery({
     queryKey: ['ambulances'],
@@ -175,7 +175,7 @@ export const useAmbulanceTracking = () => {
   });
 };
 
-// ===== GREEN WAVE CONTROLS =====
+
 export const useGreenWave = () => {
   const queryClient = useQueryClient();
   

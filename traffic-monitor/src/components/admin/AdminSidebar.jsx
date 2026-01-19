@@ -39,9 +39,9 @@ export default function AdminSidebar() {
     const { theme, toggleTheme } = useTheme();
     const { user, logout } = useAuth();
     const location = useLocation();
-    useEffect(() => {
-        console.log("Current location in sidebar:", location.pathname);
-    }, [location]);
+    // useEffect(() => {
+    //     console.log("Current location in sidebar:", location.pathname);
+    // }, [location]);
     const isExpanded = !collapsed || isHovered;
 
     const sidebarBg = theme === 'dark'

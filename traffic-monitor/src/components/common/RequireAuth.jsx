@@ -6,14 +6,14 @@ export default function RequireAuth({ role, children }) {
     const { user, loading } = useAuth();
     const location = useLocation();
 
-    useEffect(() => {
-        console.log("RequireAuth check:", {
-            loading,
-            user: user?.role,
-            requiredRole: role,
-            path: location.pathname
-        });
-    }, [loading, user, role, location]);
+    // useEffect(() => {
+    //     console.log("RequireAuth check:", {
+    //         loading,
+    //         user: user?.role,
+    //         requiredRole: role,
+    //         path: location.pathname
+    //     });
+    // }, [loading, user, role, location]);
 
     if (loading) {
         return (
@@ -27,15 +27,15 @@ export default function RequireAuth({ role, children }) {
     }
 
     if (!user) {
-        console.log("No user found, redirecting to login");
+
         return <Navigate to="/" state={{ from: location }} replace />;
     }
 
     if (role && user.role !== role) {
-        console.log(`User role ${user.role} doesn't match required role ${role}`);
+
         return <Navigate to="/" replace />;
     }
 
-    console.log("User authenticated, rendering protected content");
+
     return children;
 }

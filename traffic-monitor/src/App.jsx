@@ -6,7 +6,7 @@ import Overview from "@/pages/admin/OverView";
 import Operators from "@/pages/admin/Operators";
 // import Roles from "@/pages/admin/Roles";
 import Streams from "@/pages/admin/Streams";
-// import ModelConfig from "@/pages/admin/ModelConfig";
+import ModelConfig from "@/pages/admin/ModelConfig";
 // import AuditLogs from "@/pages/admin/AuditLogs";
 // import LoginHistory from "@/pages/admin/LoginHistory";
 import Metrics from "@/pages/admin/Metrics";
@@ -29,9 +29,10 @@ export default function App() {
       >
         <Route index element={<Overview />} />
         <Route path="operators" element={<Operators />} />
+        <Route path="model" element={<ModelConfig />} />
         {/* <Route path="roles" element={<Roles />} />
         
-        <Route path="model" element={<ModelConfig />} />
+        
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="login-history" element={<LoginHistory />} /> */}
         <Route path="metrics" element={<Metrics />} />

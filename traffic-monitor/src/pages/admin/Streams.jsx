@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from "react";
-import { useStreams, useCreateStream, useToggleStream } from "@/hooks/useStreams";
+import { useStreams, useCreateStream, useToggleStream, useStopStream } from "@/hooks/useStreams";
 import { cn } from "@/lib/utils";
 import CreateStreamModal from "@/components/admin/CreateStreamModal";
 import StreamDetailModal from "@/components/admin/StreamDetailModal";
 
-// Icons
+
 import {
     Play, Pause, Eye, Video, AlertTriangle,
     ChevronUp, ChevronDown, Settings, Wifi, WifiOff
 } from "lucide-react";
 
-// 1. CONSTANTS - Moved outside to prevent re-creation
+
 const MODEL_OPTIONS = [
     { id: "mark-1", name: "Mark-1", description: "Fast Inference", bestFor: "Basic Monitoring" },
     { id: "mark-2", name: "Mark-2", description: "CCTV Optimized", bestFor: "Ground Traffic" },
@@ -24,7 +24,7 @@ const STATUS_CONFIG = {
     error: { bg: "bg-red-100", text: "text-red-800", icon: <AlertTriangle className="w-3 h-3" /> },
 };
 
-// 2. SUB-COMPONENTS - Defined outside main component
+
 const StatusBadge = ({ status, error }) => {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.inactive;
     return (
@@ -118,23 +118,22 @@ function StreamRow({ stream, onToggle, onView, onStop }) {
 
 // 3. MAIN COMPONENT
 export default function Streams() {
-    const { data = [], stopStream, toggleStream } = useStreams();
+    const { data = [] } = useStreams();
     const createStreamMutation = useCreateStream();
     const toggleStreamMutation = useToggleStream();
+    const stopStreamMutation = useStopStream();
 
-
-    if (data.length > 0) console.log("✅ Streams Data Received:", data);
+    // if (data.length > 0) console.log("✅ Streams Data Received:", data);
     const [openCreateModal, setOpenCreateModal] = useState(false);
     const [selectedStream, setSelectedStream] = useState(null);
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState("name");
     const [sortOrder, setSortOrder] = useState("asc");
     const handleViewStream = (stream) => {
-        console.log("👁️ User clicked view for stream:", stream);
-        console.log("👉 Target URL should be:", stream.aiEngineUrl);
+
         setSelectedStream(stream);
     };
-    // Memoize filtered data to prevent unnecessary re-sorts on every render
+
     const filteredStreams = useMemo(() => {
         return [...data]
             .filter(stream =>
@@ -159,6 +158,10 @@ export default function Streams() {
             setSortBy(column);
             setSortOrder("asc");
         }
+    };
+    const handleCreateStream = async (payload) => {
+
+        await createStreamMutation.mutateAsync(payload);
     };
 
     return (
@@ -236,7 +239,7 @@ export default function Streams() {
             <CreateStreamModal
                 open={openCreateModal}
                 onClose={() => setOpenCreateModal(false)}
-                onCreate={(payload) => createStreamMutation.mutateAsync(payload)}
+                onCreate={handleCreateStream}
                 modelOptions={MODEL_OPTIONS}
             />
 
