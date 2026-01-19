@@ -1,12 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { auth } from "@/lib/firebase";
-
+import { auth,db } from "@/lib/firebase";
+import { collection, query, onSnapshot, where } from "firebase/firestore";
+import { useEffect } from "react";
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 import { useState } from "react";
-
-
-
 export function useStreams() {
   return useQuery({
     queryKey: ["streams"],
@@ -74,4 +72,46 @@ export function useToggleStream() {
     },
     onSuccess: () => qc.invalidateQueries(["streams"]),
   });
+}
+export function usePoliceStreams() {
+  const queryClient = useQueryClient();
+
+ 
+  const queryInfo = useQuery({
+    queryKey: ["police-streams"],
+    queryFn: async () => {
+      const user = auth.currentUser;
+      if (!user) return [];
+      
+      const token = await user.getIdToken();
+      
+      const res = await fetch(`${API}/api/streams`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const json = await res.json();
+      return json.data;
+    },
+    staleTime: Infinity, 
+  });
+
+  
+  useEffect(() => {
+    
+    const q = query(collection(db, "streams")); 
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const liveStreams = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      
+      
+      queryClient.setQueryData(["police-streams"], liveStreams);
+    });
+
+    return () => unsubscribe();
+  }, [queryClient]);
+
+  return queryInfo;
 }

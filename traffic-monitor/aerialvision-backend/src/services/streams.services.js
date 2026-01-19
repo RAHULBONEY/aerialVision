@@ -97,3 +97,14 @@ exports.update = async (id, updates) => {
   const doc = await ref.get();
   return { id, ...doc.data() };
 };
+
+exports.listActive = async () => {
+  const snap = await db
+    .collection(COLLECTION)
+    .where("status", "!=", "DELETED")
+    .get();
+  return snap.docs.map(d => ({ 
+    id: d.id, 
+    ...d.data() 
+  }));
+};

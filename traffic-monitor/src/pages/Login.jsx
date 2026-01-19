@@ -43,7 +43,7 @@ const GridBackground = () => (
 );
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("test@example.com");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [bootText, setBootText] = useState("");
     const [loading, setLoading] = useState(false);
@@ -69,7 +69,7 @@ export default function LoginPage() {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             console.log("Login successful:", userCredential.user);
-            // AuthContext will handle the navigation
+
         } catch (err) {
             console.error("Login error:", err);
             setError(err.message || "Authentication failed");

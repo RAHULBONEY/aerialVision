@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "@/pages/Login";
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import Overview from "@/pages/admin/OverView";
 import Operators from "@/pages/admin/Operators";
@@ -10,9 +9,17 @@ import ModelConfig from "@/pages/admin/ModelConfig";
 // import AuditLogs from "@/pages/admin/AuditLogs";
 // import LoginHistory from "@/pages/admin/LoginHistory";
 import Metrics from "@/pages/admin/Metrics";
-
+import PoliceLayout from "@/components/layout/PoliceLayout";
+import TrafficDashboard from "@/pages/police/TrafficDashboard";
 import RequireAuth from "@/components/common/RequireAuth";
-
+import LiveFeeds from "./pages/police/LiveFeeds";
+import Incidents from "./pages/police/Incidents";
+const ComingSoon = ({ title }) => (
+  <div className="flex flex-col items-center justify-center h-[50vh] text-slate-400">
+    <h2 className="text-2xl font-bold dark:text-white text-blacks mb-2">{title}</h2>
+    <p>Module under construction</p>
+  </div>
+);
 export default function App() {
   return (
     <Routes>
@@ -37,6 +44,22 @@ export default function App() {
         <Route path="login-history" element={<LoginHistory />} /> */}
         <Route path="metrics" element={<Metrics />} />
         <Route path="streams" element={<Streams />} />
+      </Route>
+
+      {/* Traffic Operator ROUTES */}
+      <Route
+        path="/police"
+        element={
+          <RequireAuth role="TRAFFIC_POLICE">
+            <PoliceLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<TrafficDashboard />} />
+        <Route path="streams" element={<LiveFeeds />} />
+        <Route path="incidents" element={<Incidents />} />
+        <Route path="comms" element={<ComingSoon title="Emergency Communications" />} />
+        <Route path="units" element={<ComingSoon title="Patrol Unit Tracking" />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/admin" replace />} />
