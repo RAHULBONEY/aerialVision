@@ -12,27 +12,31 @@ exports.proxyStream = async (req, res) => {
   const { id } = req.params;
   const AI_ENGINE_URL = process.env.AI_ENGINE_URL;
 
-  try {
-    
-    const response = await fetch(`${AI_ENGINE_URL}/streams/${id}`, {
-      headers: { "ngrok-skip-browser-warning": "true" }
-    });
-
-    if (!response.ok) return res.status(response.status).send("Stream unreachable");
-
-    
-    res.setHeader("Content-Type", "multipart/x-mixed-replace;boundary=frame");
-    if (response.body.pipe) {
-        response.body.pipe(res);
-    } else {
-        const { Readable } = require('stream');
-        Readable.from(response.body).pipe(res);
+  const response = await fetch(`${AI_ENGINE_URL}/streams/${id}`, {
+    headers: {
+      "ngrok-skip-browser-warning": "true",
+      "Connection": "keep-alive"
     }
-  } catch (error) {
-    console.error("Proxy Error:", error);
-    res.status(500).send("Proxy Error");
+  });
+
+  if (!response.ok) {
+    res.status(response.status).end("Stream unreachable");
+    return;
   }
+
+  res.writeHead(200, {
+    "Content-Type": "multipart/x-mixed-replace; boundary=frame",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "Connection": "keep-alive",
+    "Transfer-Encoding": "chunked",
+    "X-Accel-Buffering": "no"
+  });
+
+  response.body.pipe(res);
 };
+
 exports.listStreams = async (req, res) => {
   try {
     const streams = await service.list(req.user);
