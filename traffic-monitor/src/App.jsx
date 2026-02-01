@@ -14,6 +14,14 @@ import TrafficDashboard from "@/pages/police/TrafficDashboard";
 import RequireAuth from "@/components/common/RequireAuth";
 import LiveFeeds from "./pages/police/LiveFeeds";
 import Incidents from "./pages/police/Incidents";
+import EmergencyComms from "./pages/police/EmergencyComms";
+
+// Emergency Operator imports
+import EmergencyLayout from "@/components/layout/EmergencyLayout";
+import EmergencyDashboard from "@/pages/emergency/Dashboard";
+import EmergencyStreams from "@/pages/emergency/Streams";
+import EmergencyIncidents from "@/pages/emergency/Incidents";
+
 const ComingSoon = ({ title }) => (
   <div className="flex flex-col items-center justify-center h-[50vh] text-slate-400">
     <h2 className="text-2xl font-bold dark:text-white text-blacks mb-2">{title}</h2>
@@ -58,8 +66,22 @@ export default function App() {
         <Route index element={<TrafficDashboard />} />
         <Route path="streams" element={<LiveFeeds />} />
         <Route path="incidents" element={<Incidents />} />
-        <Route path="comms" element={<ComingSoon title="Emergency Communications" />} />
+        <Route path="comms" element={<EmergencyComms />} />
         <Route path="units" element={<ComingSoon title="Patrol Unit Tracking" />} />
+      </Route>
+
+      {/* EMERGENCY OPERATOR ROUTES */}
+      <Route
+        path="/emergency"
+        element={
+          <RequireAuth role="EMERGENCY">
+            <EmergencyLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<EmergencyDashboard />} />
+        <Route path="streams" element={<EmergencyStreams />} />
+        <Route path="incidents" element={<EmergencyIncidents />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/admin" replace />} />

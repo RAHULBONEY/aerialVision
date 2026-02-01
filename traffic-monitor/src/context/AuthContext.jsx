@@ -8,7 +8,7 @@ console.log(API_BASE_URL);
 const ROLE_ROUTES = {
     ADMIN: "/admin",
     TRAFFIC_POLICE: "/police",
-    EMERGENCY: "/hospital",
+    EMERGENCY: "/emergency",
 };
 
 const AuthContext = createContext(null);
