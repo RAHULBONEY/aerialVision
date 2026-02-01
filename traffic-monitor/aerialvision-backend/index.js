@@ -8,6 +8,8 @@ const adminStreams = require("./src/routes/admin.streams");
 const configRoutes = require("./src/routes/config.routes");
 const streams = require("./src/routes/streams");
 const incidentRoutes = require("./src/routes/incident");
+const trafficPoliceRoutes = require("./src/routes/trafficPolice.routes");
+const chatRoutes = require("./src/routes/chat.routes");
 const app = express();
 
 
@@ -48,6 +50,8 @@ app.use("/api", streams);
 app.use("/api/admin", adminOperatorsRoutes);
 app.use("/api/config", configRoutes);
 app.use("/api/incidents", incidentRoutes);
+app.use("/api/traffic-police", trafficPoliceRoutes);
+app.use("/api/chats", chatRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
