@@ -9,12 +9,14 @@ import ModelConfig from "@/pages/admin/ModelConfig";
 // import AuditLogs from "@/pages/admin/AuditLogs";
 // import LoginHistory from "@/pages/admin/LoginHistory";
 import Metrics from "@/pages/admin/Metrics";
+import VideoAnalysis from "@/pages/admin/VideoAnalysis";
 import PoliceLayout from "@/components/layout/PoliceLayout";
 import TrafficDashboard from "@/pages/police/TrafficDashboard";
 import RequireAuth from "@/components/common/RequireAuth";
 import LiveFeeds from "./pages/police/LiveFeeds";
 import Incidents from "./pages/police/Incidents";
 import EmergencyComms from "./pages/police/EmergencyComms";
+import PatrolUnits from "./pages/police/PatrolUnits";
 
 // Emergency Operator imports
 import EmergencyLayout from "@/components/layout/EmergencyLayout";
@@ -52,6 +54,7 @@ export default function App() {
         <Route path="login-history" element={<LoginHistory />} /> */}
         <Route path="metrics" element={<Metrics />} />
         <Route path="streams" element={<Streams />} />
+        <Route path="analyze" element={<VideoAnalysis />} />
       </Route>
 
       {/* Traffic Operator ROUTES */}
@@ -67,7 +70,7 @@ export default function App() {
         <Route path="streams" element={<LiveFeeds />} />
         <Route path="incidents" element={<Incidents />} />
         <Route path="comms" element={<EmergencyComms />} />
-        <Route path="units" element={<ComingSoon title="Patrol Unit Tracking" />} />
+        <Route path="units" element={<PatrolUnits />} />
       </Route>
 
       {/* EMERGENCY OPERATOR ROUTES */}

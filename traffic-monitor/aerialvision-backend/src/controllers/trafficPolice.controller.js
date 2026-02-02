@@ -1,9 +1,6 @@
 const trafficPoliceService = require("../services/trafficPolice.service");
 
-/**
- * GET /api/traffic-police
- * Fetch all active traffic police officers (excluding self)
- */
+
 exports.listTrafficPolice = async (req, res) => {
   try {
     const currentUserId = req.user.uid;

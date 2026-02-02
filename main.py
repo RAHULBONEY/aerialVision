@@ -1,7 +1,3 @@
-# =========================
-# main.py — Aerial Vision API
-# Emergency Vehicle Detection via Visual Cues
-# =========================
 
 import os
 import re

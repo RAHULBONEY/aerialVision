@@ -15,7 +15,9 @@ const MODEL_OPTIONS = [
     { id: "mark-1", name: "Mark-1", description: "Fast Inference", bestFor: "Basic Monitoring" },
     { id: "mark-2", name: "Mark-2", description: "CCTV Optimized", bestFor: "Ground Traffic" },
     { id: "mark-2.5", name: "Mark-2.5", description: "Balanced", bestFor: "Mixed Sources" },
-    { id: "mark-3", name: "Mark-3", description: "Aerial Precision", bestFor: "Drone/Aerial" },
+    { id: "mark-3", name: "Mark-3", description: "Aerial Precision", bestFor: "Drone/Aerial", isProduction: true },
+    { id: "mark-4", name: "Mark-4", description: "Research Model", bestFor: "High Accuracy", isExperimental: true },
+    { id: "mark-5", name: "Mark-5", description: "Advanced Precision", bestFor: "Aerial/Research", isExperimental: true },
 ];
 
 const STATUS_CONFIG = {
@@ -76,7 +78,15 @@ function StreamRow({ stream, onToggle, onView, onStop }) {
             </td>
             <td className="py-4 px-4">
                 <div className="space-y-1">
-                    <div className="font-medium text-sm">{model.name}</div>
+                    <div className="font-medium text-sm flex items-center gap-2">
+                        {model.name}
+                        {model.isProduction && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded font-medium">PROD</span>
+                        )}
+                        {model.isExperimental && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded font-medium">🧪 EXP</span>
+                        )}
+                    </div>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400">Best for: {model.bestFor}</p>
                 </div>
             </td>

@@ -14,8 +14,27 @@ export default function ModelCard({ id, model, onToggle }) {
         switch (status) {
             case "production": return "default";
             case "allowed": return "secondary";
+            case "experimental": return "outline";
             case "disabled": return "destructive";
             default: return "outline";
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case "production": return "🔒 PRODUCTION";
+            case "experimental": return "🧪 EXPERIMENTAL";
+            case "disabled": return "DISABLED";
+            default: return status?.toUpperCase();
+        }
+    };
+
+    const getStatusColors = (status) => {
+        switch (status) {
+            case "production": return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800";
+            case "experimental": return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
+            case "disabled": return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800";
+            default: return "";
         }
     };
 
@@ -23,8 +42,11 @@ export default function ModelCard({ id, model, onToggle }) {
         <Card className={`transition-all duration-200 ${!isEnabled ? "opacity-75 bg-muted/50 border-destructive/20" : "hover:shadow-md"}`}>
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                    <Badge variant={getBadgeVariant(model.status)} className="uppercase tracking-widest text-[10px]">
-                        {model.status}
+                    <Badge
+                        variant={getBadgeVariant(model.status)}
+                        className={`uppercase tracking-widest text-[10px] border ${getStatusColors(model.status)}`}
+                    >
+                        {getStatusLabel(model.status)}
                     </Badge>
                     <Switch
                         checked={isEnabled}

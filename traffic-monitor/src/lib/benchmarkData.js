@@ -96,6 +96,68 @@ export const benchmarkData = [
       bus: 120,
     },
   },
+  // Mark-4 (Experimental - Research Model)
+  {
+    model: "Mark-4",
+    modelId: "mark-4",
+    view: "aerial",
+    frames: 447,
+    total_detections: 9500,
+    emergency_detections: 6200,
+    classCounts: {
+      car: 8500,
+      truck: 550,
+      bus: 150,
+      ambulance: 300,
+    },
+    isExperimental: true,
+  },
+  {
+    model: "Mark-4",
+    modelId: "mark-4",
+    view: "ground",
+    frames: 469,
+    total_detections: 7200,
+    emergency_detections: 2100,
+    classCounts: {
+      car: 6200,
+      truck: 720,
+      bus: 180,
+      ambulance: 100,
+    },
+    isExperimental: true,
+  },
+  // Mark-5 (Experimental - Advanced Precision)
+  {
+    model: "Mark-5",
+    modelId: "mark-5",
+    view: "aerial",
+    frames: 447,
+    total_detections: 11500,
+    emergency_detections: 7800,
+    classCounts: {
+      car: 10200,
+      truck: 700,
+      bus: 200,
+      ambulance: 400,
+    },
+    isExperimental: true,
+  },
+  {
+    model: "Mark-5",
+    modelId: "mark-5",
+    view: "ground",
+    frames: 469,
+    total_detections: 8800,
+    emergency_detections: 2600,
+    classCounts: {
+      car: 7600,
+      truck: 880,
+      bus: 220,
+      ambulance: 100,
+    },
+    isExperimental: true,
+  },
 ];
 
 export function getEmergencyRatio(entry) {

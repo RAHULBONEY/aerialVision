@@ -180,17 +180,31 @@ export default function Metrics() {
                                             <div className="flex items-center gap-2">
                                                 <div className={cn(
                                                     "w-8 h-8 rounded-lg flex items-center justify-center",
-                                                    row.model.includes("Mark-3") ? "bg-blue-100 dark:bg-blue-900/30" :
-                                                        row.model.includes("Mark-2.5") ? "bg-emerald-100 dark:bg-emerald-900/30" :
-                                                            row.model.includes("Mark-2") ? "bg-amber-100 dark:bg-amber-900/30" :
-                                                                "bg-slate-100 dark:bg-slate-700"
+                                                    row.model.includes("Mark-5") ? "bg-purple-100 dark:bg-purple-900/30" :
+                                                        row.model.includes("Mark-4") ? "bg-amber-100 dark:bg-amber-900/30" :
+                                                            row.model.includes("Mark-3") ? "bg-blue-100 dark:bg-blue-900/30" :
+                                                                row.model.includes("Mark-2.5") ? "bg-emerald-100 dark:bg-emerald-900/30" :
+                                                                    row.model.includes("Mark-2") ? "bg-amber-100 dark:bg-amber-900/30" :
+                                                                        "bg-slate-100 dark:bg-slate-700"
                                                 )}>
                                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                                         {row.model.charAt(row.model.length - 1)}
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-slate-800 dark:text-slate-200">{row.model}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium text-slate-800 dark:text-slate-200">{row.model}</p>
+                                                        {row.isExperimental && (
+                                                            <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded font-medium">
+                                                                🧪 EXP
+                                                            </span>
+                                                        )}
+                                                        {row.model === "Mark-3" && (
+                                                            <span className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded font-medium">
+                                                                🔒 PROD
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-slate-500 dark:text-slate-400">{row.modelId}</p>
                                                 </div>
                                             </div>
@@ -261,7 +275,7 @@ export default function Metrics() {
                     It provides the best balance of detection reliability and emergency recognition across both aerial and ground views.
                     Mark-2.5 remains suitable for high-accuracy ground feed applications.
                 </p>
-                <div className="grid md:grid-cols-3 gap-3 mt-4">
+                <div className="grid md:grid-cols-4 gap-3 mt-4">
                     <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
                             <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-500" />
@@ -276,12 +290,19 @@ export default function Metrics() {
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Mark-2.5 for ground feeds</p>
                     </div>
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                            <AlertTriangle className="w-4 h-4 text-purple-600 dark:text-purple-500" />
+                            <h4 className="font-medium text-slate-800 dark:text-slate-200">Experimental</h4>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Mark-4 & Mark-5 (research)</p>
+                    </div>
                     <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
                             <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-500" />
                             <h4 className="font-medium text-slate-800 dark:text-slate-200">Not Recommended</h4>
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Mark-1 due to low detection accuracy</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Mark-1 due to low accuracy</p>
                     </div>
                 </div>
             </div>

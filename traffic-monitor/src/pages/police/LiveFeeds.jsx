@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePoliceStreams } from '@/hooks/useStreams';
 import StreamCard from '@/components/police/StreamCard';
-import { BarChart3, Cpu, Clock, Filter, RefreshCw } from 'lucide-react';
+import StreamDetailModal from '@/components/admin/StreamDetailModal';
+import { BarChart3, Cpu, Clock, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function LiveFeeds() {
     const { data: streams, isLoading, error, refetch } = usePoliceStreams();
+    const [selectedStream, setSelectedStream] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
+
+    const handleStreamClick = (stream) => {
+        setSelectedStream(stream);
+        setModalOpen(true);
+    };
 
     // Mock stats data
     const systemStats = {
@@ -106,9 +114,20 @@ export default function LiveFeeds() {
             {/* Stream Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {streams?.map((stream) => (
-                    <StreamCard key={stream.id} stream={stream} />
+                    <StreamCard
+                        key={stream.id}
+                        stream={stream}
+                        onClick={handleStreamClick}
+                    />
                 ))}
             </div>
+
+            {/* Stream Detail Modal */}
+            <StreamDetailModal
+                open={modalOpen}
+                onOpenChange={setModalOpen}
+                stream={selectedStream}
+            />
 
             {/* Status Footer */}
             <div className="pt-6 border-t border-gray-200 dark:border-slate-800/50">
