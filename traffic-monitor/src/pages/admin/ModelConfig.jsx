@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useConfigDashboard, useUpdatePolicy } from "@/hooks/useModelConfig";
-import { Shield, Server, Activity } from "lucide-react";
+import { Shield, Server, Activity, AlertTriangle } from "lucide-react";
 import ModelCard from "@/components/admin/config/ModalCard";
 import PolicyRuleRow from "@/components/admin/config/PolicyRuleRow";
 import SaveBanner from "@/components/admin/config/SaveBanner";
@@ -135,6 +135,34 @@ export default function ModelConfig() {
                             onUpdate={handleRuleUpdate}
                         />
                     ))}
+                </div>
+            </section>
+
+            {/* Warnings Section */}
+            <section className="mt-8">
+                <div className="flex items-center gap-2 mb-4">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">System Notices</h2>
+                </div>
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-3">
+                    <div className="flex items-start gap-3 text-sm">
+                        <span className="text-amber-500">•</span>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            <strong className="text-amber-600 dark:text-amber-400">Experimental models (Mark-4, Mark-5)</strong> may reduce FPS and increase compute costs.
+                        </p>
+                    </div>
+                    <div className="flex items-start gap-3 text-sm">
+                        <span className="text-blue-500">•</span>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Policy changes apply to <strong>new streams only</strong>. Existing streams retain their current model.
+                        </p>
+                    </div>
+                    <div className="flex items-start gap-3 text-sm">
+                        <span className="text-green-500">•</span>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            <strong className="text-green-600 dark:text-green-400">Mark-3</strong> is the locked production default for mission-critical deployments.
+                        </p>
+                    </div>
                 </div>
             </section>
 

@@ -94,7 +94,22 @@ export default function PolicyRuleRow({ viewName, rule, onUpdate }) {
                             </SelectTrigger>
                             <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
                                 <SelectItem value="mark-3" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                    Mark-3 (Precision)
+                                    <span className="flex items-center gap-2">
+                                        Mark-3 (Precision)
+                                        <span className="text-[9px] px-1 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">🔒 PROD</span>
+                                    </span>
+                                </SelectItem>
+                                <SelectItem value="mark-5" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                    <span className="flex items-center gap-2">
+                                        Mark-5 (Advanced)
+                                        <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded">🧪 EXP</span>
+                                    </span>
+                                </SelectItem>
+                                <SelectItem value="mark-4" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                    <span className="flex items-center gap-2">
+                                        Mark-4 (Research)
+                                        <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded">🧪 EXP</span>
+                                    </span>
                                 </SelectItem>
                                 <SelectItem value="mark-2.5" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
                                     Mark-2.5 (Balanced)

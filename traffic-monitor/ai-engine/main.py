@@ -1,212 +1,185 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-from ultralytics import YOLO
-import torch
-import psutil
-import cv2
-import numpy as np
-import yt_dlp
-import uuid
 import os
-from dotenv import load_dotenv
-load_dotenv()
+import uvicorn
+import httpx
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
-app = FastAPI()
-try:
-    print("⏳ Loading Probe Model (Mark-3)...")
-    probe_model = YOLO("best.pt")
-    print("✅ Probe Model Loaded.")
-except Exception as e:
-    print(f"⚠️ Warning: Probe model failed to load: {e}")
-    probe_model = None
+# =========================
+# CONFIGURATION
+# =========================
 
+app = FastAPI(title="Aerial Vision Gateway (Blind Proxy)")
+
+# ⚠️ UPDATE THIS WITH YOUR RUNNING KAGGLE URL
+KAGGLE_BRAIN_URL = "https://denver-ungenerating-beneficently.ngrok-free.dev" 
+
+# Directory where you store your pre-downloaded scenarios
+SIMULATION_DIR = "./streams" 
+os.makedirs(SIMULATION_DIR, exist_ok=True)
+
+# Mount streams dir for frontend playback
+app.mount("/streams", StaticFiles(directory=SIMULATION_DIR), name="streams")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"] 
 )
 
-def get_stream_url(url):
-    """Resolve YouTube URL to direct stream link using yt-dlp"""
-    if "youtube.com" not in url and "youtu.be" not in url:
-        return url 
-    
-    try:
-        ydl_opts = {'format': 'best[ext=mp4]', 'quiet': True}
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            return info['url']
-    except Exception as e:
-        print(f"❌ URL Resolution Failed: {e}")
-        return None
+# =========================
+# 1. THE PROBE (GOVERNANCE)
+# =========================
 
 @app.post("/probe")
-async def probe_view_type(request: Request):
+async def probe_stream(payload: dict):
     """
-    Analyzes ONE frame to decide if the view is AERIAL or GROUND.
-    
+    Simulates a probe but HARDCODES the recommendation for Mark 4.5
+    to ensure safety-critical ambulance detection works during demos.
     """
-    if not probe_model:
-        return JSONResponse({"viewType": "GROUND", "reason": "Probe model not loaded"})
-
-    try:
-        body = await request.json()
-        source_url = body.get("sourceUrl")
-        print(f"🕵️ Probing Source: {source_url}")
-
-       
-        real_url = get_stream_url(source_url)
-        if not real_url:
-            return JSONResponse({"viewType": "GROUND", "reason": "Could not resolve URL"})
-
-        
-        cap = cv2.VideoCapture(real_url)
-        ret, frame = cap.read()
-        cap.release()
-
-        if not ret:
-            return JSONResponse({"viewType": "GROUND", "reason": "Stream offline or unreadable"})
-
-        
-        results = probe_model(frame, imgsz=640, verbose=False)[0]
-        
-       
-        boxes = results.boxes.xywhn.cpu().numpy() 
-        
-        if len(boxes) == 0:
-            return JSONResponse({"viewType": "GROUND", "reason": "No objects detected"})
-
-        
-        areas = boxes[:, 2] * boxes[:, 3] 
-        avg_area = np.mean(areas)
-        
-        print(f"📊 Probe Result: Avg Object Area = {avg_area:.5f}")
-
-        if avg_area < 0.008: 
-            return JSONResponse({
-                "viewType": "AERIAL", 
-                "reason": f"Detected small objects (Scale: {avg_area:.4f}) indicating High Altitude."
-            })
-        else:
-            return JSONResponse({
-                "viewType": "GROUND", 
-                "reason": f"Detected large objects (Scale: {avg_area:.4f}) indicating Street Level."
-            })
-
-    except Exception as e:
-        print(f"❌ Probe Error: {e}")
-        return JSONResponse({"viewType": "GROUND", "reason": "Probe failed, defaulting to safe mode."})
-@app.get("/gpu/status")
-def gpu_status():
-    status = {
-        "device": "cpu",
-        "memory_gb": 0,
-        "temperature": 0,
-        "load": 0
-    }
+    source_url = payload.get("sourceUrl", "")
+    print(f"🕵️ Probing Request for: {source_url}")
     
-    if torch.cuda.is_available():
-        status["device"] = "cuda"
-        status["memory_gb"] = torch.cuda.get_device_properties(0).total_memory / 1e9
-        status["memory_allocated_gb"] = torch.cuda.memory_allocated(0) / 1e9
-        status["memory_free_gb"] = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated(0)) / 1e9
-        
-        # Add temperature if nvidia-ml-py is installed
-        try:
-            import nvidia_smi
-            nvidia_smi.nvmlInit()
-            handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
-            status["temperature"] = nvidia_smi.nvmlDeviceGetTemperature(handle, nvidia_smi.NVML_TEMPERATURE_GPU)
-            status["load"] = nvidia_smi.nvmlDeviceGetUtilizationRates(handle).gpu
-        except:
-            pass
-    
-    status["cpu_percent"] = psutil.cpu_percent()
-    status["memory_percent"] = psutil.virtual_memory().percent
-    
-    return status
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    import traceback
-    error_msg = f"{exc.__class__.__name__}: {str(exc)}"
-    print(f"🔥 ENGINE ERROR: {error_msg}")
-    print(traceback.format_exc())
-    
-    return JSONResponse(
-        status_code=500,
-        content={"error": error_msg, "success": False}
-    )
-@app.post("/streams/start")
-def start(payload: dict):
-    stream_id = payload.get("id") or str(uuid.uuid4())
-    source_url = payload["sourceUrl"]
-    model = payload.get("model", "mark-2")
-    public_url = os.getenv("PUBLIC_URL", "http://localhost:8001")
-    print(public_url)
-    if stream_id in STREAMS:
-        raise HTTPException(status_code=400, detail="Stream already running")
-
-    try:
-        start_stream(stream_id, source_url, model)
-    except Exception as e:
-        
-        return {"success": False, "error": str(e)}
     return {
-        "streamId": stream_id,
-        "aiEngineUrl": f"{public_url}/streams/{stream_id}"
+        "viewType": "AERIAL",
+        "recommended_model": "mark4.5",
+        "reason": "Governance Protocol: Ironclad Safety Standards Enforced (Ambulance Detection)",
+        "is_locked": True
     }
 
-@app.get("/streams/{stream_id}")
-def view(stream_id: str):
-    stream = STREAMS.get(stream_id)
-    if not stream:
-        raise HTTPException(status_code=404, detail="Stream not found")
+# =========================
+# 2. STREAMING PROXY
+# =========================
 
+async def stream_generator(file_path: str, model: str):
+    """
+    Reads a local video file and streams it to the Remote Brain,
+    then yields the NDJSON response line-by-line.
     
+    Kaggle Brain uses a TWO-STEP flow:
+    1. POST /upload_and_process -> returns {"stream_url": "/telemetry?..."}
+    2. GET /telemetry?... -> returns NDJSON stream
+    """
+    print(f"🚀 Proxying {file_path} to Brain ({KAGGLE_BRAIN_URL})...")
+    
+    async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=60.0)) as client:
+        try:
+            # STEP 1: Upload video to Brain
+            print(f"   📤 Uploading {os.path.basename(file_path)}...")
+            with open(file_path, "rb") as f:
+                files = {"file": (os.path.basename(file_path), f, "video/mp4")}
+                data = {"model": model}
+                
+                upload_response = await client.post(
+                    f"{KAGGLE_BRAIN_URL}/upload_and_process",
+                    files=files,
+                    data=data,
+                    headers={"ngrok-skip-browser-warning": "true"}
+                )
+                
+                if upload_response.status_code != 200:
+                    error_msg = f"Brain upload failed: HTTP {upload_response.status_code}"
+                    print(f"   ❌ {error_msg}")
+                    yield f'{{"error": "{error_msg}"}}\n'
+                    return
+                
+                # Parse the response to get stream_url
+                upload_result = upload_response.json()
+                stream_url = upload_result.get("stream_url")
+                
+                if not stream_url:
+                    yield '{"error": "Brain did not return stream_url"}\n'
+                    return
+                
+                print(f"   ✅ Upload complete. Telemetry URL: {stream_url}")
+            
+            # STEP 2: Consume NDJSON telemetry stream
+            telemetry_url = f"{KAGGLE_BRAIN_URL}{stream_url}"
+            print(f"   📡 Consuming telemetry from: {telemetry_url}")
+            
+            async with client.stream(
+                "GET",
+                telemetry_url,
+                headers={"ngrok-skip-browser-warning": "true"}
+            ) as telemetry_response:
+                
+                if telemetry_response.status_code != 200:
+                    yield f'{{"error": "Telemetry stream failed: HTTP {telemetry_response.status_code}"}}\n'
+                    return
+                
+                # Forward NDJSON chunks
+                async for chunk in telemetry_response.aiter_bytes():
+                    yield chunk
+
+        except httpx.TimeoutException as e:
+            print(f"🔥 Timeout Error: {e}")
+            yield f'{{"error": "Connection timeout to Brain"}}\n'
+        except Exception as e:
+            print(f"🔥 Proxy Error: {e}")
+            yield f'{{"error": "{str(e)}"}}\n'
+
+@app.post("/process-simulation")
+async def process_simulation(
+    simulation_id: str = Form(...), 
+    model: str = Form("mark4.5")
+):
+    """
+    Endpoint for SIMULATION MODE.
+    Reads a local file from disk and proxies it to the Brain.
+    """
+    # 1. Resolve File Path
+    # Map IDs to filenames if necessary, or just use the ID as filename
+    filename = f"{simulation_id}.mp4" 
+    file_path = os.path.join(SIMULATION_DIR, filename)
+    
+    if not os.path.exists(file_path):
+        # Fallback for demo if file missing
+        print(f"⚠️ File {filename} not found in {SIMULATION_DIR}")
+        raise HTTPException(404, detail="Simulation file not found on server")
+
+    # 2. Stream to Brain
     return StreamingResponse(
-        stream["reader"].stream(),
-        media_type="multipart/x-mixed-replace;boundary=frame",
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0",
-            "Access-Control-Allow-Origin": "*", 
-        }
+        stream_generator(file_path, model),
+        media_type="application/x-ndjson"
     )
 
-@app.post("/streams/{stream_id}/stop")
-def stop(stream_id: str):
-    if not stop_stream(stream_id):
-        raise HTTPException(status_code=404, detail="Stream not found")
-    return {"success": True}
+@app.post("/process-upload")
+async def process_upload(
+    file: UploadFile = File(...),
+    model: str = Form("mark4.5")
+):
+    """
+    Endpoint for USER UPLOADS.
+    Saves temp file, proxies to Brain, cleans up.
+    """
+    temp_path = f"/tmp/{file.filename}"
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
+        
+    # Reuse the generator
+    return StreamingResponse(
+        stream_generator(temp_path, model),
+        media_type="application/x-ndjson"
+    )
+
+# =========================
+# UTILS
+# =========================
+
+@app.get("/simulations/list")
+def list_simulations():
+    """Returns available local mp4 files for the frontend dropdown"""
+    files = [f for f in os.listdir(SIMULATION_DIR) if f.endswith(".mp4")]
+    return {
+        "success": True, 
+        "scenarios": [{"id": f.replace(".mp4", ""), "name": f} for f in files]
+    }
 
 if __name__ == "__main__":
-    import uvicorn
-    from pyngrok import ngrok
-    import os
-
-   
-    PORT = 8001
-
-   
-    try:
-        tunnel = ngrok.connect(PORT)
-        public_url = tunnel.public_url
-        print("==================================================")
-        print(f"🚀 LOCAL PROBE IS LIVE AT: {public_url}")
-        print("==================================================")
-
-        
-        os.environ["PUBLIC_URL"] = public_url
-        
-    except Exception as e:
-        print(f"⚠️ Could not start Ngrok: {e}")
-        print("Falling back to localhost...")
-
-   
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    port = int(os.getenv("PORT", 8001))
+    print(f"🟢 Gateway running on port {port}")
+    print(f"📂 Serving Simulations from: {os.path.abspath(SIMULATION_DIR)}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

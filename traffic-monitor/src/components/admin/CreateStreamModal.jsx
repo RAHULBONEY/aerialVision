@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     X, Video, Link, Shield, Info,
-    Loader2, Lock, ShieldCheck, AlertTriangle
+    Loader2, Lock, ShieldCheck, AlertTriangle, Film
 } from "lucide-react";
 import { useAnalyzeSource } from "@/hooks/useModelConfig";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,10 @@ const SOURCE_TYPES = [
     { value: "WEBCAM", label: "Local Webcam", icon: "📷", description: "Use connected camera" },
     { value: "RTSP", label: "IP Camera", icon: "🌐", description: "RTSP/IP camera stream" },
     { value: "YOUTUBE", label: "YouTube Live", icon: "▶️", description: "YouTube live stream" },
+    { value: "SIMULATION", label: "Simulation / Demo", icon: <Film className="w-6 h-6" />, description: "Pre-recorded scenario" },
 ];
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function CreateStreamModal({ open, onClose, onCreate, modelOptions }) {
     const [form, setForm] = useState({
@@ -25,20 +28,64 @@ export default function CreateStreamModal({ open, onClose, onCreate, modelOption
         sourceUrl: "0",
         model: "mark-3",
         assignedRoles: ["ADMIN"],
+        simulationId: "" // Added for simulation
     });
     const [governance, setGovernance] = useState({
         isLocked: false,
         detectedView: null,
         reason: ""
     });
-    const { mutate: analyze, isPending: isAnalyzing } = useAnalyzeSource();
+    const [simulations, setSimulations] = useState([]);
+    const [isLoadingSims, setIsLoadingSims] = useState(false);
 
-    if (!open) return null;
+    const { mutate: analyze, isPending: isAnalyzing } = useAnalyzeSource();
 
     const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
+    // Fetch simulations when type is SIMULATION
+    useEffect(() => {
+        let mounted = true;
+
+        const fetchSims = async () => {
+            if (form.type !== "SIMULATION") return;
+
+            setIsLoadingSims(true);
+            try {
+                // Dynamic import to avoid SSR issues if any, but mainly purely client side.
+                // Keeping import inside might be okay if not used elsewhere, but cleaner to just import at top if possible.
+                // However, moving on...
+                const { auth } = await import("@/lib/firebase");
+                const user = auth.currentUser;
+
+                let headers = {};
+                if (user) {
+                    const token = await user.getIdToken();
+                    headers = { Authorization: `Bearer ${token}` };
+                }
+
+                const res = await fetch(`${API_URL}/api/incidents/simulations`, { headers });
+                const data = await res.json();
+
+                if (mounted && data.success) {
+                    setSimulations(data.data);
+                }
+            } catch (e) {
+                console.error("Failed to fetch simulations", e);
+            } finally {
+                if (mounted) setIsLoadingSims(false);
+            }
+        };
+
+        fetchSims();
+
+        return () => { mounted = false; };
+    }, [form.type]);
+
+    if (!open) return null;
+
+
     const runAnalysis = (url, modelId) => {
-        if (form.type === "WEBCAM" || !url || url.length < 5) return;
+        if (form.type === "WEBCAM" || form.type === "SIMULATION" || !url || url.length < 5) return;
 
         analyze(
             { sourceUrl: url, requestedModel: modelId },
@@ -78,6 +125,10 @@ export default function CreateStreamModal({ open, onClose, onCreate, modelOption
 
     const submit = async () => {
         if (!form.name.trim()) return;
+
+        // Ensure simulationId is set if type is SIMULATION
+        if (form.type === "SIMULATION" && !form.simulationId) return;
+
         await onCreate({
             ...form,
             viewType: governance.detectedView || "GROUND"
@@ -111,7 +162,7 @@ export default function CreateStreamModal({ open, onClose, onCreate, modelOption
 
                     <div>
                         <label className="block text-sm font-medium text-gray-900 dark:text-white mb-3">Source Type</label>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-4 gap-2">
                             {SOURCE_TYPES.map((type) => (
                                 <div key={type.value} className="relative">
                                     <input
@@ -130,23 +181,54 @@ export default function CreateStreamModal({ open, onClose, onCreate, modelOption
                                     <label
                                         htmlFor={`type-${type.value}`}
                                         className={cn(
-                                            "flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200",
+                                            "flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 h-24",
                                             form.type === type.value
                                                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm"
                                                 : "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-400"
                                         )}
                                     >
-                                        <div className={cn("text-2xl mb-2", form.type === type.value ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}>
-                                            {type.icon}
+                                        <div className={cn("text-2xl mb-1", form.type === type.value ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}>
+                                            {typeof type.icon === 'string' ? type.icon : type.icon}
                                         </div>
-                                        <div className="text-sm font-medium text-center">{type.label}</div>
+                                        <div className="text-[10px] font-medium text-center leading-tight">{type.label}</div>
                                     </label>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {form.type !== "WEBCAM" && (
+                    {form.type === "SIMULATION" && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Select Simulation Scenario</label>
+                            {isLoadingSims ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <Loader2 className="w-4 h-4 animate-spin" /> Fetching scenarios...
+                                </div>
+                            ) : (
+                                <select
+                                    value={form.simulationId}
+                                    onChange={(e) => {
+                                        update("simulationId", e.target.value);
+                                        // Also auto-set name if empty
+                                        const sim = simulations.find(s => s.id === e.target.value);
+                                        if (sim && !form.name) {
+                                            update("name", sim.name);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition appearance-none"
+                                >
+                                    <option value="">-- Select a scenario --</option>
+                                    {simulations.map(sim => (
+                                        <option key={sim.id} value={sim.id}>
+                                            {sim.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    )}
+
+                    {(form.type !== "WEBCAM" && form.type !== "SIMULATION") && (
                         <div>
                             <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                                 {form.type === "YOUTUBE" ? "YouTube Live URL" : "RTSP Camera URL"}
@@ -193,7 +275,9 @@ export default function CreateStreamModal({ open, onClose, onCreate, modelOption
                                             isDisabled ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800" : "cursor-pointer",
                                             isSelected
                                                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                                : "border-gray-300 dark:border-gray-700 hover:border-gray-400"
+                                                : model.isExperimental
+                                                    ? "border-amber-200 dark:border-amber-800 hover:border-amber-400"
+                                                    : "border-gray-300 dark:border-gray-700 hover:border-gray-400"
                                         )}
                                     >
                                         <div className="flex items-center gap-3">
@@ -207,8 +291,26 @@ export default function CreateStreamModal({ open, onClose, onCreate, modelOption
                                                 className="text-blue-600 focus:ring-blue-500"
                                             />
                                             <div>
-                                                <div className="font-medium text-gray-900 dark:text-white">{model.name}</div>
+                                                <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                                                    {model.name}
+                                                    {model.isProduction && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded font-medium flex items-center gap-0.5">
+                                                            <Lock className="w-2.5 h-2.5" /> PROD
+                                                        </span>
+                                                    )}
+                                                    {model.isExperimental && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded font-medium">
+                                                            🧪 EXP
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="text-xs text-gray-500 dark:text-gray-400">{model.description}</div>
+                                                {model.isExperimental && (
+                                                    <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
+                                                        <AlertTriangle className="w-3 h-3" />
+                                                        Higher compute cost
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         {governance.isLocked && isSelected && (
