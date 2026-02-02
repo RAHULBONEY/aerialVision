@@ -97,8 +97,11 @@ export function usePoliceStreams() {
 
   
   useEffect(() => {
-    
-    const q = query(collection(db, "streams")); 
+    // Query only streams where TRAFFIC_POLICE is in assignedRoles
+    const q = query(
+      collection(db, "streams"),
+      where("assignedRoles", "array-contains", "TRAFFIC_POLICE")
+    ); 
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const liveStreams = snapshot.docs.map((doc) => ({

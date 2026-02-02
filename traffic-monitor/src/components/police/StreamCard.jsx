@@ -1,8 +1,15 @@
-import React from "react";
-import { Activity, AlertTriangle, Zap, MapPin, Wifi } from "lucide-react";
+import React, { useState } from "react";
+import { Activity, AlertTriangle, Zap, MapPin, Wifi, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const getStreamThumbnail = (id, type) => {
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8001";
+
+const getStreamThumbnail = (id, type, streamType, simulationId) => {
+    // For simulations, return the video URL from Gateway
+    if (streamType === 'SIMULATION' && simulationId) {
+        return `${GATEWAY_URL}/streams/${simulationId}.mp4`;
+    }
+
     const placeholders = {
         aerial: [
             "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?q=80&w=800&auto=format&fit=crop",
@@ -19,7 +26,10 @@ const getStreamThumbnail = (id, type) => {
     return collection[index];
 };
 
-export default function StreamCard({ stream }) {
+export default function StreamCard({ stream, onClick }) {
+    const [imageError, setImageError] = useState(false);
+    const isSimulation = stream.type === 'SIMULATION';
+
     const statusConfig = {
         NORMAL: {
             border: "border-emerald-200 dark:border-emerald-500/30",
@@ -49,11 +59,16 @@ export default function StreamCard({ stream }) {
     const density = stream.metrics?.density || 0;
     const speed = stream.metrics?.speed || 0;
 
+    const thumbnailUrl = getStreamThumbnail(stream.id, stream.viewType, stream.type, stream.simulationId);
+
     return (
-        <div className={cn(
-            "group relative overflow-hidden rounded-xl bg-white dark:bg-[#0a1525] border-2 shadow-sm dark:shadow-none transition-all duration-300",
-            status.border
-        )}>
+        <div
+            onClick={() => onClick?.(stream)}
+            className={cn(
+                "group relative overflow-hidden rounded-xl bg-white dark:bg-[#0a1525] border-2 shadow-sm dark:shadow-none transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-lg",
+                status.border
+            )}
+        >
             {/* Header */}
             <div className="p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -71,7 +86,7 @@ export default function StreamCard({ stream }) {
                                     ? "bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
                                     : "bg-gray-100 dark:bg-slate-800/50 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-700"
                             )}>
-                                {stream.viewType === 'aerial' ? 'DRONE' : 'GROUND'}
+                                {stream.type === 'SIMULATION' ? 'SIM' : stream.viewType === 'aerial' ? 'DRONE' : 'GROUND'}
                             </span>
                             <span className="text-xs text-gray-500 dark:text-slate-500 font-mono">
                                 ID: {stream.id?.slice(0, 8).toUpperCase() || 'N/A'}
@@ -90,11 +105,28 @@ export default function StreamCard({ stream }) {
 
                 {/* Thumbnail */}
                 <div className="relative aspect-video rounded-lg overflow-hidden mb-4 border border-gray-200 dark:border-slate-800/50 bg-gray-100 dark:bg-black">
-                    <img
-                        src={getStreamThumbnail(stream.id, stream.viewType)}
-                        alt={`Feed from ${stream.name}`}
-                        className="w-full h-full object-cover opacity-90 dark:opacity-70 group-hover:opacity-100 transition-opacity duration-300"
-                    />
+                    {isSimulation ? (
+                        // For simulations, show video with poster
+                        <video
+                            src={thumbnailUrl}
+                            className="w-full h-full object-cover opacity-90 dark:opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                            muted
+                            preload="metadata"
+                            onError={() => setImageError(true)}
+                        />
+                    ) : imageError ? (
+                        // Fallback gradient if image fails
+                        <div className="w-full h-full bg-gradient-to-br from-blue-600 via-purple-600 to-cyan-600 flex items-center justify-center">
+                            <Play size={40} className="text-white/70" />
+                        </div>
+                    ) : (
+                        <img
+                            src={thumbnailUrl}
+                            alt={`Feed from ${stream.name}`}
+                            className="w-full h-full object-cover opacity-90 dark:opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                            onError={() => setImageError(true)}
+                        />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-white/20 dark:from-black/80 via-transparent to-transparent"></div>
 
                     {/* Live Indicator */}

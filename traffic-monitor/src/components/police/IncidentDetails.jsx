@@ -1,16 +1,49 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckCircle, User, FileText, Wifi } from 'lucide-react';
 import { useAcknowledgeIncident } from '@/hooks/useIncidents';
+import { useDispatchUnit } from '@/hooks/usePatrolUnits';
 import { formatFullDateTime, formatDateTime } from '@/utils/dateUtils';
+import AssignPatrolUnitModal from './AssignPatrolUnitModal';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function IncidentDetails({ incident }) {
-    const { mutate: acknowledge, isPending } = useAcknowledgeIncident();
+    const queryClient = useQueryClient();
+    const { mutateAsync: acknowledge, isPending } = useAcknowledgeIncident();
+    const { mutateAsync: dispatchUnit } = useDispatchUnit();
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [assigning, setAssigning] = useState(false);
 
     const handleAcknowledge = () => {
-        acknowledge({
-            id: incident.id,
-            note: "Operator confirmed visual and dispatched unit."
-        });
+        // Open the patrol unit selection modal
+        setShowAssignModal(true);
+    };
+
+    const handleAssignUnit = async (unitId) => {
+        setAssigning(true);
+        try {
+            // 1. Acknowledge the incident
+            await acknowledge({
+                id: incident.id,
+                note: "Operator confirmed visual and dispatching unit."
+            });
+
+            // 2. Dispatch the patrol unit
+            await dispatchUnit({
+                unitId,
+                incidentId: incident.id
+            });
+
+            // 3. Invalidate queries to refresh data
+            queryClient.invalidateQueries({ queryKey: ['incidents'] });
+            queryClient.invalidateQueries({ queryKey: ['patrolUnits'] });
+
+            setShowAssignModal(false);
+        } catch (err) {
+            console.error('Assignment failed:', err);
+            throw err;
+        } finally {
+            setAssigning(false);
+        }
     };
 
     return (
@@ -125,11 +158,11 @@ export default function IncidentDetails({ incident }) {
                     <div className="flex gap-3">
                         <button
                             onClick={handleAcknowledge}
-                            disabled={isPending}
+                            disabled={isPending || assigning}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-medium rounded-lg transition-colors"
                         >
                             <CheckCircle size={16} />
-                            {isPending ? "PROCESSING..." : "ACKNOWLEDGE"}
+                            {isPending || assigning ? "PROCESSING..." : "ACKNOWLEDGE"}
                         </button>
                         <button className="flex-1 px-4 py-3 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-medium rounded-lg transition-colors">
                             ESCALATE
@@ -137,6 +170,14 @@ export default function IncidentDetails({ incident }) {
                     </div>
                 </div>
             )}
+
+            {/* Assign Patrol Unit Modal */}
+            <AssignPatrolUnitModal
+                open={showAssignModal}
+                onClose={() => setShowAssignModal(false)}
+                incident={incident}
+                onAssign={handleAssignUnit}
+            />
         </div>
     );
 }
