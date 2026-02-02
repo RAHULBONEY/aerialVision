@@ -3,9 +3,7 @@ const admin = require('firebase-admin');
 const incidentService = require('../services/incident.service');
 const brainConsumerService = require('../services/brainConsumer.service');
 
-/**
- * List incidents with optional filters
- */
+
 exports.listIncidents = async (req, res) => {
   try {
     const { status, type, streamId, limit } = req.query;
@@ -191,7 +189,7 @@ exports.startSimulation = async (req, res) => {
  */
 exports.getSimulations = async (req, res) => {
   try {
-    // FIX: Added await because getSimulationScenarios is async (fetches from Python Gateway)
+    
     const scenarios = await brainConsumerService.getSimulationScenarios();
     
     res.json({
