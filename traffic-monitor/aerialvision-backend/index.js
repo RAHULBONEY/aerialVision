@@ -80,8 +80,26 @@ app.use(express.json());
 // Serve static video files for simulations
 app.use('/streams', express.static(path.join(__dirname, 'public', 'streams')));
 
-app.get('/health', (req, res) => {
-  res.json({ success: true, status: 'OK', socketConnections: io.engine.clientsCount });
+app.get('/health', async (req, res) => {
+  let aiEngineStatus = 'OFFLINE';
+  try {
+    const aiEngineUrl = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8001';
+   
+    const response = await fetch(aiEngineUrl, { signal: AbortSignal.timeout(2000) });
+    if (response.ok || response.status === 404 || response.status === 405) {
+
+        aiEngineStatus = 'ACTIVE';
+    }
+  } catch (error) {
+    aiEngineStatus = 'OFFLINE';
+  }
+  
+  res.json({ 
+    success: true, 
+    backend: 'ONLINE', 
+    aiEngine: aiEngineStatus, 
+    socketConnections: io.engine.clientsCount 
+  });
 });
 
 app.use('/api/auth', authRoutes);
