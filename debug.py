@@ -10,7 +10,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ⚙️ CONFIGURATION
 # ==========================================
 # Paste your Ngrok URL here
-TARGET_URL = st.text_input("Enter Ngrok URL:", "https://rosita-unpulverable-jayse.ngrok-free.dev")
+TARGET_URL = st.text_input("Enter Ngrok URL:", "https://anamnestically-nonpreferential-oakley.ngrok-free.dev")
 # ==========================================
 
 st.set_page_config(page_title="Ngrok Inspector", page_icon="🕵️", layout="wide")

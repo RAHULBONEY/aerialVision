@@ -1,8 +1,3 @@
-/**
- * Firestore Seed Script – Mark-4 and Mark-5
- * Run:
- * node src/scripts/addMark4Models.js
- */
 
 require("dotenv").config();
 const admin = require("firebase-admin");

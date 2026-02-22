@@ -50,14 +50,52 @@ export default function LoginPage() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const text = "SYSTEM.READY // WAITING_FOR_OPERATOR...";
-        let i = 0;
-        const interval = setInterval(() => {
-            setBootText(text.slice(0, i));
-            i++;
-            if (i > text.length) clearInterval(interval);
-        }, 50);
-        return () => clearInterval(interval);
+        let isMounted = true;
+        const phase1Text = "SYSTEM.BOOTING // CHECKING_SERVICES...";
+
+        const typeText = (text, callback) => {
+            let i = 0;
+            const interval = setInterval(() => {
+                if (!isMounted) return clearInterval(interval);
+                setBootText(text.slice(0, i));
+                i++;
+                if (i > text.length) {
+                    clearInterval(interval);
+                    if (callback) setTimeout(callback, 500);
+                }
+            }, 50);
+        };
+
+        const checkHealth = async () => {
+            if (!isMounted) return;
+            try {
+
+                let apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                if (apiUrl.endsWith('/api/v1')) {
+                    apiUrl = apiUrl.replace('/api/v1', '');
+                }
+                const response = await fetch(`${apiUrl}/health`);
+                if (!response.ok) throw new Error("Backend offline");
+
+                const data = await response.json();
+
+                if (data.aiEngine === 'ACTIVE') {
+                    typeText("SYSTEM.READY // BACKEND_ONLINE // AI_ENGINE_ACTIVE // WAITING_FOR_OPERATOR...");
+                } else {
+                    typeText("SYSTEM.WARNING // BACKEND_ONLINE // AI_ENGINE_OFFLINE // WAITING_FOR_OPERATOR...");
+                }
+            } catch (err) {
+                console.error("Health check failed:", err);
+                typeText("SYSTEM.CRITICAL // ALL_SYSTEMS_OFFLINE // WAITING_FOR_OPERATOR...");
+            }
+        };
+
+        // Start Boot Sequence
+        typeText(phase1Text, checkHealth);
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const handleSubmit = async (e) => {

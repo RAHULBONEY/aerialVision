@@ -5,7 +5,7 @@ import time
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-API_BASE_URL = "https://denver-ungenerating-beneficently.ngrok-free.dev" # <--- UPDATE THIS
+API_BASE_URL = "https://anamnestically-nonpreferential-oakley.ngrok-free.dev" # <--- UPDATE THIS
 
 st.set_page_config(page_title="AerialVision Admin", page_icon="🛡️", layout="wide")
 
