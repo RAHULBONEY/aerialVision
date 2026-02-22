@@ -11,15 +11,15 @@ const {
   sendMessage,
 } = require("../controllers/chat.controller");
 
-// All routes require authentication and TRAFFIC_POLICE role
+// auth the user 
 router.use(authenticateToken);
 router.use(requireRole(ROLES.POLICE_AND_ADMIN));
 
 // Chat routes
-router.post("/", createOrGetChat);           // Create or get chat
-router.get("/", getUserChats);               // Get all user's chats
-router.get("/:chatId", getChat);             // Get chat metadata
-router.get("/:chatId/messages", getMessages); // Get messages
-router.post("/:chatId/messages", sendMessage); // Send message
+router.post("/", createOrGetChat);   //for the state         
+router.get("/", getUserChats);          //particular chat      
+router.get("/:chatId", getChat);             //get chat
+router.get("/:chatId/messages", getMessages); // get msg
+router.post("/:chatId/messages", sendMessage);//send msg
 
 module.exports = router;
