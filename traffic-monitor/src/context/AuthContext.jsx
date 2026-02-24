@@ -35,21 +35,30 @@ export function AuthProvider({ children }) {
 
                 const idToken = await firebaseUser.getIdToken(true);
 
+                // Check if this is a fresh login event (not just a page reload)
+                const hasTrackedLogin = sessionStorage.getItem("av_login_tracked");
+                const headers = { Authorization: `Bearer ${idToken}` };
+
+                if (!hasTrackedLogin) {
+                    headers["x-login-event"] = "true";
+                }
 
                 const res = await fetch(`${API_BASE_URL}/api/auth/profile`, {
-                    headers: { Authorization: `Bearer ${idToken}` },
+                    headers,
                 });
-
-
 
                 if (!res.ok) {
                     throw new Error(`Profile fetch failed: ${res.status}`);
                 }
 
                 const responseData = await res.json();
-
-
                 const userData = responseData.data;
+
+                // Mark login as tracked so reloads don't duplicate logs
+                if (!hasTrackedLogin && userData) {
+                    sessionStorage.setItem("av_login_tracked", "true");
+                }
+
                 setUser(userData);
 
 
@@ -78,6 +87,7 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         await signOut(auth);
+        sessionStorage.removeItem("av_login_tracked");
         setUser(null);
         navigate("/", { replace: true });
     };

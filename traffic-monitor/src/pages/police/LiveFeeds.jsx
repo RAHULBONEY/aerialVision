@@ -125,7 +125,7 @@ export default function LiveFeeds() {
             {/* Stream Detail Modal */}
             <StreamDetailModal
                 open={modalOpen}
-                onOpenChange={setModalOpen}
+                onClose={() => setModalOpen(false)}
                 stream={selectedStream}
             />
 

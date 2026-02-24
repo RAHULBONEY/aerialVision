@@ -6,6 +6,9 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # =========================
 # CONFIGURATION
@@ -13,8 +16,8 @@ from typing import Optional
 
 app = FastAPI(title="Aerial Vision Gateway (Blind Proxy)")
 
-# ⚠️ UPDATE THIS WITH YOUR RUNNING KAGGLE URL
-KAGGLE_BRAIN_URL = "https://denver-ungenerating-beneficently.ngrok-free.dev" 
+# ⚠️ UPDATE THIS WITH YOUR RUNNING KAGGLE URL OR SET IN .env
+KAGGLE_BRAIN_URL = os.getenv("KAGGLE_BRAIN_URL", "http://164.52.213.157:8000")
 
 # Directory where you store your pre-downloaded scenarios
 SIMULATION_DIR = "./streams" 
@@ -177,6 +180,46 @@ def list_simulations():
         "success": True, 
         "scenarios": [{"id": f.replace(".mp4", ""), "name": f} for f in files]
     }
+
+# =========================
+# SATELLITE TILE ANALYSIS
+# =========================
+
+@app.post("/analyze")
+async def analyze_tiles(payload: dict):
+    """
+    Pass-through to GPU Brain's /analyze endpoint.
+    Receives { sessionId, tileIds, model } from the Node.js backend
+    and forwards it directly to the GPU server.
+    """
+    print(f"🧠 Forwarding tile analysis request to GPU Brain...")
+    
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=30.0)) as client:
+        try:
+            response = await client.post(
+                f"{KAGGLE_BRAIN_URL}/analyze",
+                json=payload,
+                headers={"ngrok-skip-browser-warning": "true"}
+            )
+            
+            if response.status_code != 200:
+                return JSONResponse(
+                    status_code=response.status_code,
+                    content={"error": f"GPU Brain returned HTTP {response.status_code}"}
+                )
+            
+            return response.json()
+            
+        except httpx.TimeoutException:
+            return JSONResponse(
+                status_code=504,
+                content={"error": "GPU Brain timeout during tile analysis"}
+            )
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"GPU Brain connection failed: {str(e)}"}
+            )
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8001))

@@ -7,6 +7,9 @@ const path = require('path');
 
 const authRoutes = require('./src/routes/auth');
 const adminOperatorsRoutes = require("./src/routes/admin.operators");
+const adminRolesRoutes = require("./src/routes/admin.roles");
+const adminAuditLogsRoutes = require("./src/routes/admin.auditLogs");
+const adminLoginHistoryRoutes = require("./src/routes/admin.loginHistory");
 const adminStreams = require("./src/routes/admin.streams");
 const configRoutes = require("./src/routes/config.routes");
 const streams = require("./src/routes/streams");
@@ -106,10 +109,15 @@ app.use('/api/auth', authRoutes);
 app.use("/api/admin", adminStreams);
 app.use("/api", streams);
 app.use("/api/admin", adminOperatorsRoutes);
+app.use("/api/admin", adminRolesRoutes);
+app.use("/api/admin", adminAuditLogsRoutes);
+app.use("/api/admin", adminLoginHistoryRoutes);
 app.use("/api/config", configRoutes);
 app.use("/api/incidents", incidentRoutes);
 app.use("/api/traffic-police", trafficPoliceRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/emergency", require('./src/routes/emergency.routes'));
+
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
