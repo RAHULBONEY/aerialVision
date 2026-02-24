@@ -105,7 +105,8 @@ exports.computeRoutes = async (req, res) => {
             tiles: {
                 ready: tilesReady,
                 pending: tilesPending.length,
-                total: requiredTiles.length
+                total: requiredTiles.length,
+                all: requiredTiles  // Full list with tileIds for AI analysis
             },
             pollUrl: `/api/emergency/routes/${sessionId}/tiles`
         });
