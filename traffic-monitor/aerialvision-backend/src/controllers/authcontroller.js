@@ -1,4 +1,5 @@
 const { db } = require('../config/firebase');
+const loginHistoryService = require('../services/loginHistory.service');
 
 const getProfile = async (req, res) => {
 
@@ -13,6 +14,19 @@ if (snap.empty) {
 }
 
 const user = snap.docs[0].data();
+
+  // Record login event if requested
+  if (req.headers['x-login-event'] === 'true') {
+    loginHistoryService.recordLogin({
+      uid: req.user.uid,
+      name: user.name || "Unknown",
+      email: user.email || "Unknown",
+      role: user.role || "UNKNOWN",
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || "Unknown",
+      userAgent: req.headers['user-agent'] || "Unknown",
+      status: "SUCCESS"
+    });
+  }
 
   res.json({
     success: true,

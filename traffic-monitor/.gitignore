@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# AI Engine
+*.pt
+__pycache__/
+ai-engine_pack.zip
+.env

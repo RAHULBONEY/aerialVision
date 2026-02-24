@@ -119,7 +119,10 @@ exports.updateStatus = async (req, res) => {
 exports.dispatchToIncident = async (req, res) => {
   try {
     const { incidentId } = req.body;
-    const unit = await patrolUnitsService.dispatchToIncident(req.params.id, incidentId);
+    const userId = req.user.uid;
+    const userName = req.user.name || req.user.email;
+    
+    const unit = await patrolUnitsService.dispatchToIncident(req.params.id, incidentId, userId, userName);
 
     res.json({
       success: true,

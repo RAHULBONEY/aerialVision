@@ -74,18 +74,26 @@ export default function LoginPage() {
                 if (apiUrl.endsWith('/api/v1')) {
                     apiUrl = apiUrl.replace('/api/v1', '');
                 }
+
+                console.log("[Health Check] Ping Backend at:", `${apiUrl}/health`);
                 const response = await fetch(`${apiUrl}/health`);
-                if (!response.ok) throw new Error("Backend offline");
+
+                if (!response.ok) {
+                    console.error("[Health Check] Backend responded with status:", response.status);
+                    throw new Error("Backend offline");
+                }
 
                 const data = await response.json();
+                console.log("[Health Check] Backend Response Data:", data);
 
                 if (data.aiEngine === 'ACTIVE') {
                     typeText("SYSTEM.READY // BACKEND_ONLINE // AI_ENGINE_ACTIVE // WAITING_FOR_OPERATOR...");
                 } else {
+                    console.warn("[Health Check] AI Engine is reported OFFLINE by backend.");
                     typeText("SYSTEM.WARNING // BACKEND_ONLINE // AI_ENGINE_OFFLINE // WAITING_FOR_OPERATOR...");
                 }
             } catch (err) {
-                console.error("Health check failed:", err);
+                console.error("[Health Check] Fetch Error:", err);
                 typeText("SYSTEM.CRITICAL // ALL_SYSTEMS_OFFLINE // WAITING_FOR_OPERATOR...");
             }
         };
@@ -120,7 +128,7 @@ export default function LoginPage() {
             <GridBackground />
 
             {/* Add scan animation CSS */}
-            <style jsx>{`
+            <style jsx="true">{`
                 @keyframes scan {
                     0% {
                         transform: translateY(-100vh);

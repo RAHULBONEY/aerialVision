@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUpdateStatus, useDeletePatrolUnit } from "@/hooks/usePatrolUnits";
+import AssignIncidentModal from "./AssignIncidentModal";
+import { useState } from "react";
 
 const STATUS_CONFIG = {
     AVAILABLE: {
@@ -61,6 +63,7 @@ function formatTimeAgo(timestamp) {
 export default function PatrolUnitDrawer({ unit, isOpen, onClose }) {
     const updateStatusMutation = useUpdateStatus();
     const deleteMutation = useDeletePatrolUnit();
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
     if (!isOpen || !unit) return null;
 
@@ -218,8 +221,8 @@ export default function PatrolUnitDrawer({ unit, isOpen, onClose }) {
                     {/* Action Buttons */}
                     <div className="space-y-2 pt-2">
                         <button
-                            disabled
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-medium opacity-50 cursor-not-allowed"
+                            onClick={() => setIsAssignModalOpen(true)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 transition-colors text-white rounded-xl font-medium shadow-md shadow-blue-500/20"
                         >
                             <Navigation className="w-4 h-4" />
                             Assign to Incident
@@ -254,6 +257,12 @@ export default function PatrolUnitDrawer({ unit, isOpen, onClose }) {
                     </div>
                 </div>
             </div>
+
+            <AssignIncidentModal
+                open={isAssignModalOpen}
+                onClose={() => setIsAssignModalOpen(false)}
+                unitId={unit?.id}
+            />
         </>
     );
 }

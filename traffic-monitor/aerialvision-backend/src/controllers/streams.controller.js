@@ -1,8 +1,17 @@
 const service = require("../services/streams.services.js");
+const auditLogsService = require("../services/auditLogs.service");
 
 exports.createStream = async (req, res) => {
   try {
     const stream = await service.create(req.body, req.user.uid);
+    auditLogsService.logAction({
+      action: "CREATE_STREAM",
+      category: "STREAMS",
+      performedBy: req.user,
+      targetId: stream.id,
+      targetName: stream.name,
+      details: req.body
+    });
     res.status(201).json({ success: true, data: stream });
   } catch (e) {
     res.status(400).json({ success: false, message: e.message });
@@ -49,6 +58,14 @@ exports.listStreams = async (req, res) => {
 exports.updateStream = async (req, res) => {
   try {
     const stream = await service.update(req.params.id, req.body);
+    auditLogsService.logAction({
+      action: "UPDATE_STREAM",
+      category: "STREAMS",
+      performedBy: req.user,
+      targetId: stream.id || req.params.id,
+      targetName: stream.name || `Stream ID: ${req.params.id}`,
+      details: req.body
+    });
     res.json({ success: true, data: stream });
   } catch (e) {
     res.status(400).json({ success: false, message: e.message });
@@ -58,6 +75,13 @@ exports.updateStream = async (req, res) => {
 exports.deleteStream = async (req, res) => {
   try {
     await service.remove(req.params.id);
+    auditLogsService.logAction({
+      action: "DELETE_STREAM",
+      category: "STREAMS",
+      performedBy: req.user,
+      targetId: req.params.id,
+      targetName: `Stream ID: ${req.params.id}`
+    });
     res.json({ success: true });
   } catch (e) {
     res.status(400).json({ success: false, message: e.message });

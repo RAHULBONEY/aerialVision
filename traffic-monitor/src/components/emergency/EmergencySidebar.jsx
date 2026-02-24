@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
     { label: "Command Center", path: "/emergency", icon: LayoutDashboard },
+    { label: "Emergency Routing", path: "/emergency/routing", icon: Activity },
     { label: "Live Streams", path: "/emergency/streams", icon: Video },
     { label: "Incidents", path: "/emergency/incidents", icon: AlertTriangle },
 ];
