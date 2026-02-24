@@ -207,7 +207,8 @@ exports.analyzeRoute = async (req, res) => {
             return res.status(400).json({ success: false, error: 'tileIds array is required' });
         }
 
-        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:8001';
+        // Local fallback: http://localhost:8001
+        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'https://aerialvision.onrender.com';
 
         console.log(`🧠 Forwarding ${tileIds.length} tiles to AI Engine for analysis...`);
 
