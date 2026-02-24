@@ -17,7 +17,7 @@ load_dotenv()
 app = FastAPI(title="Aerial Vision Gateway (Blind Proxy)")
 
 # ⚠️ UPDATE THIS WITH YOUR RUNNING KAGGLE URL OR SET IN .env
-KAGGLE_BRAIN_URL = os.getenv("KAGGLE_BRAIN_URL", "http://164.52.213.157:8000")
+KAGGLE_BRAIN_URL = os.getenv("KAGGLE_BRAIN_URL", "http://164.52.213.55:8000")
 
 # Directory where you store your pre-downloaded scenarios
 SIMULATION_DIR = "./streams" 
@@ -173,8 +173,24 @@ async def process_upload(
 # =========================
 
 @app.get("/simulations/list")
-def list_simulations():
-    """Returns available local mp4 files for the frontend dropdown"""
+async def list_simulations():
+    """
+    Proxy to GPU engine for simulation list.
+    Falls back to local ./streams/ if GPU is unreachable.
+    """
+    # Try GPU engine first (it has the video files)
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                f"{KAGGLE_BRAIN_URL}/simulations/list",
+                headers={"ngrok-skip-browser-warning": "true"}
+            )
+            if response.status_code == 200:
+                return response.json()
+    except Exception as e:
+        print(f"⚠️ GPU simulations/list failed, falling back to local: {e}")
+
+    # Fallback: local files
     files = [f for f in os.listdir(SIMULATION_DIR) if f.endswith(".mp4")]
     return {
         "success": True, 
