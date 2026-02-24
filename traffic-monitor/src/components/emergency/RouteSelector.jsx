@@ -348,7 +348,7 @@ export function RouteSelector() {
             drawRoutes(res.routes);
         }
         if (res && res.tiles) {
-            setTiles(res.tiles.ready || []);
+            setTiles(res.tiles.all || res.tiles.ready || []);
             setStats({
                 newlyReady: res.tiles.ready?.length || 0,
                 stillPending: res.tiles.pending,
