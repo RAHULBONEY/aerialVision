@@ -13,7 +13,8 @@ const incidentService = require('./incident.service');
 
 // Brain API configuration
 // Python Gateway configuration
-const GATEWAY_URL = 'http://localhost:8001';
+// Local fallback: http://localhost:8001
+const GATEWAY_URL = process.env.GATEWAY_URL || 'https://aerialvision.onrender.com';
 
 /**
  * Analyze a simulation stream by streaming via Python Gateway

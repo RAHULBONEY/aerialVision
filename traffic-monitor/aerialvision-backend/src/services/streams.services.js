@@ -3,7 +3,8 @@ const db = admin.firestore();
 const fetch = require("node-fetch");
 
 const COLLECTION = "streams";
-const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://localhost:8001";
+// Local fallback: http://localhost:8001
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "https://aerialvision.onrender.com";
 exports.create = async (payload, userId) => {
   const { name, type, sourceUrl, model, assignedRoles, simulationId } = payload;
 

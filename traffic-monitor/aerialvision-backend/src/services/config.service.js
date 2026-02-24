@@ -48,7 +48,8 @@ exports.getEnforcedModel = async (requestedModel, viewType) => {
 exports.detectViewType = async (url) => {
   try {
     
-    const BASE_URI = process.env.PROBE_URI || "http://127.0.0.1:8001";
+    // Local fallback: http://127.0.0.1:8001
+    const BASE_URI = process.env.PROBE_URI || "https://aerialvision.onrender.com";
     const PROBE_URL = `${BASE_URI}/probe`;
 
     // console.log(`📡 Contacting Local AI Probe: ${PROBE_URL}`);
