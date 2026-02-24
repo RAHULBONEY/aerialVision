@@ -131,23 +131,65 @@ async def process_simulation(
 ):
     """
     Endpoint for SIMULATION MODE.
-    Reads a local file from disk and proxies it to the Brain.
+    If the MP4 exists locally → upload to GPU Brain.
+    If not (e.g. on Render) → tell GPU to process its own local copy.
     """
-    # 1. Resolve File Path
-    # Map IDs to filenames if necessary, or just use the ID as filename
     filename = f"{simulation_id}.mp4" 
     file_path = os.path.join(SIMULATION_DIR, filename)
     
-    if not os.path.exists(file_path):
-        # Fallback for demo if file missing
-        print(f"⚠️ File {filename} not found in {SIMULATION_DIR}")
-        raise HTTPException(404, detail="Simulation file not found on server")
+    if os.path.exists(file_path):
+        # LOCAL MODE: file exists, upload to GPU Brain
+        print(f"📂 Local file found: {file_path}")
+        return StreamingResponse(
+            stream_generator(file_path, model),
+            media_type="application/x-ndjson"
+        )
+    
+    # CLOUD MODE: file is on GPU server, proxy the request
+    print(f"☁️ File {filename} not local, proxying to GPU Brain...")
 
-    # 2. Stream to Brain
-    return StreamingResponse(
-        stream_generator(file_path, model),
-        media_type="application/x-ndjson"
-    )
+    async def gpu_simulation_stream():
+        async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=60.0)) as client:
+            try:
+                # Tell the GPU engine to process its own local simulation file
+                response = await client.post(
+                    f"{KAGGLE_BRAIN_URL}/process-local-simulation",
+                    json={"simulation_id": simulation_id, "model": model},
+                    headers={"ngrok-skip-browser-warning": "true"}
+                )
+                
+                if response.status_code != 200:
+                    yield f'{{"error": "GPU simulation failed: HTTP {response.status_code}"}}' + "\n"
+                    return
+
+                # GPU returns { stream_url: "/telemetry?..." }
+                result = response.json()
+                stream_url = result.get("stream_url")
+                if not stream_url:
+                    yield '{"error": "GPU did not return stream_url"}' + "\n"
+                    return
+
+                # Consume the telemetry NDJSON stream from GPU
+                telemetry_url = f"{KAGGLE_BRAIN_URL}{stream_url}"
+                print(f"   📡 Consuming GPU telemetry: {telemetry_url}")
+                
+                async with client.stream(
+                    "GET", telemetry_url,
+                    headers={"ngrok-skip-browser-warning": "true"}
+                ) as telemetry_response:
+                    if telemetry_response.status_code != 200:
+                        yield f'{{"error": "Telemetry stream failed: HTTP {telemetry_response.status_code}"}}' + "\n"
+                        return
+                    async for chunk in telemetry_response.aiter_bytes():
+                        yield chunk
+
+            except httpx.TimeoutException:
+                yield '{"error": "GPU timeout"}' + "\n"
+            except Exception as e:
+                print(f"   ❌ GPU proxy error: {e}")
+                yield f'{{"error": "{str(e)}"}}' + "\n"
+
+    return StreamingResponse(gpu_simulation_stream(), media_type="application/x-ndjson")
 
 @app.post("/process-upload")
 async def process_upload(

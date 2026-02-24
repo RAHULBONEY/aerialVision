@@ -730,6 +730,26 @@ def list_simulations():
     }
 
 
+@app.post("/process-local-simulation")
+async def process_local_simulation(payload: dict):
+    """
+    Process a simulation video that exists on this GPU server's disk.
+    Called by the Gateway when it doesn't have the file locally (e.g. Render).
+    Returns a stream_url just like /upload_and_process does.
+    """
+    simulation_id = payload.get("simulation_id", "")
+    model = payload.get("model", "mark-5")
+
+    filename = f"{simulation_id}.mp4"
+    file_path = os.path.join(SIMULATION_DIR, filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"Simulation '{filename}' not found on GPU server")
+
+    print(f"🎬 Processing local simulation: {file_path} (model: {model})")
+    return {"stream_url": f"/telemetry?video_id={file_path}&model_req={model}"}
+
+
 # ==========================================
 # 12. HEALTH & DIAGNOSTICS
 # ==========================================
