@@ -113,7 +113,6 @@ export default function VideoAnalysis() {
             setSelectedScenario(scenario);
             setStreamId(newStreamId);
 
-            // For demo, use a placeholder video URL (local file would be served statically)
             setVideoUrl(`${API_URL}/streams/${scenario.id.replace("sim_", "")}.mp4`);
 
         } catch (err) {
@@ -124,7 +123,6 @@ export default function VideoAnalysis() {
         }
     };
 
-    // Handle file upload
     const handleFileUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;

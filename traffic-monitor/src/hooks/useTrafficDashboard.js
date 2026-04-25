@@ -18,7 +18,6 @@ export function useTrafficDashboard() {
 
     // --- Incidents Logic ---
     // Only count unresolved/un-acknowledged as 'active' for top level, but it depends on what standard we want.
-    // Let's adopt the Emergency Dashboard approach: 'NEW' is active, 'ACKNOWLEDGED' etc.
     // Assuming incidents have a `status` field (e.g., 'NEW', 'ACKNOWLEDGED', 'RESOLVED')
     const activeIncidents = incidents.filter(i => i.status !== 'RESOLVED');
 

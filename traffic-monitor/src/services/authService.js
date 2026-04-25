@@ -85,7 +85,6 @@ export const AuthService = {
    */
   seedAdmin: async (email, password) => {
     try {
-      // This will fail if the user already exists in Auth, which is fine
       const userCredential = await signInWithEmailAndPassword(auth, email, password); 
       const { uid } = userCredential.user;
       

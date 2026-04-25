@@ -3,7 +3,6 @@
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const HospitalService = {
-  // 1. Hospital Resource Status
   getStats: async () => {
     await delay(1000);
     return {
@@ -14,7 +13,6 @@ export const HospitalService = {
     };
   },
 
-  // 2. Active Ambulance Feeds (GPS + Patient Data)
   getActiveAmbulances: async () => {
     await delay(1200);
     return [

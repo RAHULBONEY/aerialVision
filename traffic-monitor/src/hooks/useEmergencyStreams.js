@@ -80,11 +80,9 @@ export function useEmergencyStreams() {
     return { ...queryInfo, data: mergedData };
 }
 
-// Get streams that have emergency-related signals
 export function useEmergencyActiveStreams() {
     const { data: streams, ...rest } = useEmergencyStreams();
 
-    // Filter for streams with warning or critical status
     const emergencyStreams = streams?.filter(stream =>
         stream.currentStatus === 'WARNING' ||
         stream.currentStatus === 'CRITICAL' ||

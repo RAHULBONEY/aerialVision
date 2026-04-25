@@ -76,7 +76,6 @@ export function useAcknowledgeIncident() {
     });
 }
 
-// Get incident statistics
 export function useIncidentStats() {
     const { data: incidents } = useEmergencyIncidents();
 

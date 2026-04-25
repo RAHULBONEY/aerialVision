@@ -20,7 +20,6 @@ exports.create = async (payload, userId) => {
     simulationId: type === 'SIMULATION' ? simulationId : null
   });
 
-  // Handle Simulation
   if (type === 'SIMULATION') {
     console.log(`🎬 Triggering Simulation Analysis for ${ref.id}`);
     const brainConsumerService = require('./brainConsumer.service');
@@ -35,8 +34,6 @@ exports.create = async (payload, userId) => {
     return { id: ref.id, name, type, status: 'active', simulationId };
   }
 
-  // Handle RTSP / Webcam / YouTube via connection to old AI Engine (or use Brain Proxy for all?)
-  // For now, keeping legacy behavior for non-simulation as per instructions to only implement simulation integration
   console.log("🚀 ATTEMPTING CONNECTION TO AI ENGINE WITH HEADERS...");
   try {
     const response = await fetch(`${AI_ENGINE_URL}/streams/start`, {

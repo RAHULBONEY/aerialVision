@@ -14,26 +14,22 @@ export default function IncidentDetails({ incident }) {
     const [assigning, setAssigning] = useState(false);
 
     const handleAcknowledge = () => {
-        // Open the patrol unit selection modal
         setShowAssignModal(true);
     };
 
     const handleAssignUnit = async (unitId) => {
         setAssigning(true);
         try {
-            // 1. Acknowledge the incident
             await acknowledge({
                 id: incident.id,
                 note: "Operator confirmed visual and dispatching unit."
             });
 
-            // 2. Dispatch the patrol unit
             await dispatchUnit({
                 unitId,
                 incidentId: incident.id
             });
 
-            // 3. Invalidate queries to refresh data
             queryClient.invalidateQueries({ queryKey: ['incidents'] });
             queryClient.invalidateQueries({ queryKey: ['patrolUnits'] });
 

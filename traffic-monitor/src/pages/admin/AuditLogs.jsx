@@ -26,7 +26,6 @@ export default function AuditLogs() {
     const hasMore = response?.hasMore;
     const nextCursor = response?.nextCursor;
 
-    // Filter by search text locally
     const filteredLogs = logs.filter(log => {
         if (!search) return true;
         const q = search.toLowerCase();

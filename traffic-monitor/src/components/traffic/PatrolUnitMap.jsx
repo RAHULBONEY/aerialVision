@@ -24,7 +24,6 @@ export default function PatrolUnitMap({
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(null);
 
-    // Load Google Maps script
     useEffect(() => {
         if (window.google?.maps) {
             setIsLoaded(true);
@@ -47,12 +46,10 @@ export default function PatrolUnitMap({
         document.head.appendChild(script);
 
         return () => {
-            // Cleanup markers on unmount
             Object.values(markersRef.current).forEach((marker) => marker.setMap(null));
         };
     }, [apiKey]);
 
-    // Initialize map
     useEffect(() => {
         if (!isLoaded || !mapRef.current || mapInstanceRef.current) return;
 
@@ -72,7 +69,6 @@ export default function PatrolUnitMap({
 
         mapInstanceRef.current = map;
 
-        // Map click handler for setting location
         map.addListener("click", (e) => {
             if (onMapClick) {
                 onMapClick({
@@ -83,13 +79,11 @@ export default function PatrolUnitMap({
         });
     }, [isLoaded, onMapClick]);
 
-    // Update markers when units change
     useEffect(() => {
         if (!mapInstanceRef.current || !isLoaded) return;
 
         const map = mapInstanceRef.current;
 
-        // Get current unit IDs
         const currentUnitIds = new Set(units.map((u) => u.id));
 
         // Remove markers for units that no longer exist
@@ -100,7 +94,6 @@ export default function PatrolUnitMap({
             }
         });
 
-        // Create or update markers for each unit
         units.forEach((unit) => {
             if (!unit.location?.lat || !unit.location?.lng) return;
 
@@ -108,7 +101,6 @@ export default function PatrolUnitMap({
             const isSelected = selectedUnit?.id === unit.id;
 
             if (markersRef.current[unit.id]) {
-                // Update existing marker
                 const marker = markersRef.current[unit.id];
 
                 // Smooth animation to new position
@@ -117,7 +109,6 @@ export default function PatrolUnitMap({
                 marker.setIcon(createMarkerIcon(unit.status, isSelected));
                 marker.setZIndex(isSelected ? 1000 : 1);
             } else {
-                // Create new marker
                 const marker = new window.google.maps.Marker({
                     position,
                     map,
@@ -281,7 +272,6 @@ export default function PatrolUnitMap({
     );
 }
 
-// Create custom marker icon
 function createMarkerIcon(status, isSelected) {
     const color = STATUS_COLORS[status] || STATUS_COLORS.AVAILABLE;
     const size = isSelected ? 40 : 32;

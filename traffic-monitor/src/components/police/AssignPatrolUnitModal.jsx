@@ -16,7 +16,6 @@ export default function AssignPatrolUnitModal({
 
     if (!open) return null;
 
-    // Filter to only available units
     const availableUnits = patrolUnits?.filter(unit => unit.status === "AVAILABLE") || [];
 
     const handleAssign = async () => {

@@ -41,11 +41,9 @@ export default function StreamDetailModal({ stream, open, onClose }) {
             setAnalysisError(null);
 
             if (stream.type === "SIMULATION") {
-                // For simulations, serve video directly from Python Gateway
                 const videoUrl = `${GATEWAY_URL}/streams/${stream.simulationId}.mp4`;
                 setStreamUrl(videoUrl);
             } else {
-                // For RTSP/Webcam, use the proxy endpoint
                 const proxyUrl = `${API_URL}/api/admin/streams/proxy/${stream.engineStreamId}`;
                 setStreamUrl(proxyUrl);
             }
@@ -61,7 +59,6 @@ export default function StreamDetailModal({ stream, open, onClose }) {
                 setAnalysisTriggered(true);
                 console.log("🧠 Triggering simulation analysis for:", stream.simulationId);
 
-                // Get auth token
                 const { auth } = await import("@/lib/firebase");
                 const user = auth.currentUser;
                 let headers = { "Content-Type": "application/json" };
