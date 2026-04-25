@@ -1,7 +1,5 @@
 import React from "react";
-import {
-    Card, CardContent
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
@@ -16,68 +14,57 @@ export default function PolicyRuleRow({ viewName, rule, onUpdate }) {
 
     return (
         <Card className={cn(
-            "hover:border-blue-300 dark:hover:border-primary/50 transition-colors border",
+            "transition-colors border overflow-hidden",
             isLocked
-                ? "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20"
-                : "border-gray-200 dark:border-gray-800"
+                ? "border-blue-200 bg-blue-50/50 dark:border-blue-800/50 dark:bg-blue-950/20"
+                : "border-slate-200 dark:border-slate-700 dark:bg-slate-800/30"
         )}>
-            <CardContent className="flex flex-col sm:flex-row items-center justify-between p-6 gap-6">
-
-                <div className="flex items-start gap-4 w-full sm:w-auto">
+            <CardContent className="p-5 space-y-4">
+                {/* Top row: icon + info + badge */}
+                <div className="flex items-start gap-4">
                     <div className={cn(
-                        "w-12 h-12 rounded-lg flex items-center justify-center shrink-0",
+                        "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
                         isLocked
-                            ? "bg-blue-100 text-blue-600 dark:bg-primary/10 dark:text-primary"
-                            : "bg-gray-100 text-gray-500 dark:bg-muted dark:text-muted-foreground"
+                            ? "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                            : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
                     )}>
                         {isAerial ? (
-                            <Satellite className="w-6 h-6" />
+                            <Satellite className="w-5 h-5" />
                         ) : (
-                            <MapPin className="w-6 h-6" />
+                            <MapPin className="w-5 h-5" />
                         )}
                     </div>
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-semibold text-gray-900 dark:text-gray-100 capitalize">
+
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-100 capitalize">
                                 {viewName.replace(/_/g, ' ')} View Policy
                             </h4>
                             {isLocked && (
                                 <Badge
-                                    variant="default"
-                                    className="text-[10px] bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-800"
+                                    variant="outline"
+                                    className="text-[10px] bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700"
                                 >
-                                    <Lock className="w-3 h-3 mr-1" />
+                                    <Lock className="w-2.5 h-2.5 mr-1" />
                                     ENFORCED
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-muted-foreground mb-3">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                             {rule.reason}
                         </p>
-
-
-                        <div className="flex items-center gap-4 text-xs">
-                            <div className="flex items-center gap-1">
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Priority:</span>
-                                <span className="text-gray-600 dark:text-gray-400 ml-1">
-                                    {rule.priority || "Medium"}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Streams:</span>
-                                <span className="text-gray-600 dark:text-gray-400 ml-1">
-                                    {rule.streams || "Auto"}
-                                </span>
-                            </div>
+                        <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mt-2">
+                            <span>Priority: <span className="font-medium text-slate-700 dark:text-slate-300">{rule.priority || "Medium"}</span></span>
+                            <span>Streams: <span className="font-medium text-slate-700 dark:text-slate-300">{rule.streams || "Auto"}</span></span>
                         </div>
                     </div>
                 </div>
 
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full sm:w-auto justify-end">
+                {/* Controls row */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-3 border-t border-slate-100 dark:border-slate-700/50">
                     {/* Target Model Select */}
-                    <div className="flex flex-col items-start sm:items-end gap-2">
-                        <span className="text-xs uppercase font-bold text-gray-600 dark:text-muted-foreground tracking-wider">
+                    <div className="flex-1 min-w-0">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider block mb-1.5">
                             Target Model
                         </span>
                         <Select
@@ -85,36 +72,36 @@ export default function PolicyRuleRow({ viewName, rule, onUpdate }) {
                             onValueChange={(val) => onUpdate(viewName, { ...rule, model: val })}
                         >
                             <SelectTrigger className={cn(
-                                "w-[200px] text-gray-900 dark:text-gray-100",
+                                "w-full text-slate-900 dark:text-slate-100",
                                 isLocked
-                                    ? "border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30"
-                                    : "border-gray-300 dark:border-gray-700"
+                                    ? "border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-950/30"
+                                    : "border-slate-200 dark:border-slate-600 dark:bg-slate-800"
                             )}>
                                 <SelectValue placeholder="Select Model" />
                             </SelectTrigger>
-                            <SelectContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-                                <SelectItem value="mark-3" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                            <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                <SelectItem value="mark-3" className="text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
                                     <span className="flex items-center gap-2">
                                         Mark-3 (Precision)
-                                        <span className="text-[9px] px-1 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">🔒 PROD</span>
+                                        <span className="text-[9px] px-1 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded">PROD</span>
                                     </span>
                                 </SelectItem>
-                                <SelectItem value="mark-5" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <SelectItem value="mark-5" className="text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
                                     <span className="flex items-center gap-2">
                                         Mark-5 (Advanced)
-                                        <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded">🧪 EXP</span>
+                                        <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 rounded">EXP</span>
                                     </span>
                                 </SelectItem>
-                                <SelectItem value="mark-4" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <SelectItem value="mark-4" className="text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
                                     <span className="flex items-center gap-2">
                                         Mark-4 (Research)
-                                        <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded">🧪 EXP</span>
+                                        <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 rounded">EXP</span>
                                     </span>
                                 </SelectItem>
-                                <SelectItem value="mark-2.5" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <SelectItem value="mark-2.5" className="text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
                                     Mark-2.5 (Balanced)
                                 </SelectItem>
-                                <SelectItem value="mark-2" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <SelectItem value="mark-2" className="text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
                                     Mark-2 (Speed)
                                 </SelectItem>
                             </SelectContent>
@@ -122,11 +109,11 @@ export default function PolicyRuleRow({ viewName, rule, onUpdate }) {
                     </div>
 
                     {/* Strict Lock Toggle */}
-                    <div className="flex flex-col items-center gap-2">
-                        <span className="text-xs uppercase font-bold text-gray-600 dark:text-muted-foreground tracking-wider">
+                    <div className="flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-1.5 shrink-0">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
                             Strict Lock
                         </span>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                             <Switch
                                 checked={rule.locked}
                                 onCheckedChange={(checked) => onUpdate(viewName, { ...rule, locked: checked })}
@@ -136,27 +123,25 @@ export default function PolicyRuleRow({ viewName, rule, onUpdate }) {
                                         : ""
                                 )}
                             />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                 {isLocked ? "On" : "Off"}
                             </span>
                         </div>
                     </div>
                 </div>
-            </CardContent>
 
-
-            {isLocked && (
-                <div className="px-6 pb-4">
+                {/* Enforced notice */}
+                {isLocked && (
                     <div className={cn(
                         "flex items-start gap-2 p-3 rounded-lg border text-sm",
                         "bg-blue-50 border-blue-200 text-blue-800",
-                        "dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
+                        "dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300"
                     )}>
                         <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                         <span>This rule is enforced and cannot be overridden by individual operators.</span>
                     </div>
-                </div>
-            )}
+                )}
+            </CardContent>
         </Card>
     );
 }

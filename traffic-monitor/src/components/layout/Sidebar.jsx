@@ -31,14 +31,14 @@ export function Sidebar({ userRole }) {
             ADMIN: [
                 { icon: Shield, label: "System Control", path: "/admin" },
                 { icon: Car, label: "Traffic Command", path: "/police" },
-                { icon: Stethoscope, label: "Medical Center", path: "/hospital" },
+                { icon: Stethoscope, label: "Ambulance Command", path: "/hospital" },
                 { icon: Users, label: "User Management", path: "/admin" },
                 { icon: Settings, label: "Configuration", path: "/admin" }
             ],
             admin: [
                 { icon: Shield, label: "System Control", path: "/admin" },
                 { icon: Car, label: "Traffic Command", path: "/police" },
-                { icon: Stethoscope, label: "Medical Center", path: "/hospital" },
+                { icon: Stethoscope, label: "Ambulance Command", path: "/hospital" },
                 { icon: Users, label: "User Management", path: "/admin" }
             ],
             TRAFFIC_POLICE: [
@@ -47,7 +47,7 @@ export function Sidebar({ userRole }) {
                 { icon: Video, label: "Live Surveillance", path: "/feeds" }
             ],
             EMERGENCY: [
-                { icon: Stethoscope, label: "Medical Control", path: "/hospital" },
+                { icon: Stethoscope, label: "Ambulance Control", path: "/hospital" },
                 { icon: Zap, label: "Green Wave System", path: "/hospital" },
                 { icon: ShieldAlert, label: "Emergency Response", path: "/incidents" }
             ]

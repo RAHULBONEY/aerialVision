@@ -6,11 +6,10 @@ const imageryService = require('../services/imagery.service');
 const tileCacheService = require('../services/tileCache.service');
 const tileQueueService = require('../services/tileQueue.service');
 const auditLogsService = require("../services/auditLogs.service");
-const { getFirestore } = require('firebase-admin/firestore'); // Since firebase-admin is required in package.json
+const ragService = require('../services/rag.service');
+const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore'); 
 
-/**
- * Main Controller orchestrating Route Fetch -> Polyline Resample -> Gridding -> Queuing
- */
 exports.computeRoutes = async (req, res) => {
     try {
         const { origin, destination, options = {} } = req.body;
@@ -23,7 +22,6 @@ exports.computeRoutes = async (req, res) => {
         const zoomLevel = 19;
         const samplingInterval = options.samplingIntervalMeters || 30;
 
-        // 1. Fetch from Google Routes
         const routes = await routeService.computeEmergencyRoutes(origin, destination, options);
 
         if (!routes.length) {
@@ -32,13 +30,10 @@ exports.computeRoutes = async (req, res) => {
 
         const primaryRoute = routes[0];
         
-        // 2. Resample the primary route polyline to dense coordinates
         primaryRoute.sampledCoords = polylineService.resamplePolyline(primaryRoute.encodedPolyline, samplingInterval);
 
-        // 3. Convert coordinates to a unique set of Zoom 19 tiles
         const requiredTiles = imageryService.generateTileGrid(primaryRoute.sampledCoords, zoomLevel);
 
-        // 4. Check cache for tiles we already possess
         const requiredTileIds = requiredTiles.map(t => t.tileId);
         const existingTileIds = await tileCacheService.checkExistingTiles(requiredTileIds);
         
@@ -47,7 +42,7 @@ exports.computeRoutes = async (req, res) => {
         const tilesPending = [];
 
         for (const tile of requiredTiles) {
-            tile.proxyUrl = `/api/emergency/tiles/${tile.tileId}`; // Frontend uses this URL
+            tile.proxyUrl = `/api/emergency/tiles/${tile.tileId}`;
             if (existingSet.has(tile.tileId)) {
                 tile.status = 'cached';
                 tilesReady.push(tile);
@@ -57,12 +52,10 @@ exports.computeRoutes = async (req, res) => {
             }
         }
 
-        // 5. Enqueue missing tiles to BullMQ
         if (tilesPending.length > 0) {
             await tileQueueService.enqueueTiles(tilesPending, sessionId);
         }
 
-        // 6. DB Persistence
         const db = getFirestore();
         const sessionRef = db.collection('routeSessions').doc(sessionId);
         
@@ -82,8 +75,28 @@ exports.computeRoutes = async (req, res) => {
             }
         };
 
-        // Write async (don't block the HTTP response)
-        sessionRef.set(sessionData).catch(console.error);
+        sessionRef.set(sessionData)
+            .then(async () => {
+                const originLabel = origin.label || origin.name || 'Unknown Location';
+                const destinationLabel = destination.label || destination.name || 'Unknown Location';
+                const durationMinutes = Math.round((routes[0]?.durationSeconds || 0) / 60);
+                const ragContent = `On ${sessionData.createdAt}, an emergency routing session (ID: ${sessionId}) was generated from '${originLabel}' to '${destinationLabel}'. The primary route covers ${sessionData.metadata.totalDistanceKm} km with an estimated driving time of ${durationMinutes} minutes. The status is ${sessionData.status} and it required analyzing ${sessionData.metadata.totalTiles} satellite tiles.`;
+
+                try {
+                    const embeddingArray = await ragService.getEmbedding(ragContent);
+                    await sessionRef.update({
+                        ragContent,
+                        embedding: admin.firestore.FieldValue.vector(embeddingArray)
+                    });
+                } catch (err) {
+                    console.error('Route session RAG embedding failed:', err.message);
+                    await sessionRef.update({
+                        ragContent,
+                        ragStatus: 'EMBEDDING_FAILED'
+                    }).catch(() => {});
+                }
+            })
+            .catch(console.error);
 
         // Audit log action
         if (req.user) {
@@ -97,7 +110,6 @@ exports.computeRoutes = async (req, res) => {
           });
         }
 
-        // 7. Return synchronous response
         return res.status(200).json({
             success: true,
             sessionId,
@@ -117,10 +129,6 @@ exports.computeRoutes = async (req, res) => {
     }
 };
 
-/**
- * Endpoint for the Frontend to poll progress.
- * If Socket.io is running, this is a fallback.
- */
 exports.pollTiles = async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -133,11 +141,8 @@ exports.pollTiles = async (req, res) => {
 
         const data = doc.data();
         
-        // Compute readiness
         let fetchedSince = 0;
         const remainingTiles = data.tiles.filter(t => t.status === 'fetching');
-        
-        // In a perfect system, background workers update Firestore. For speed we simply check cache directly.
         const pendingIds = remainingTiles.map(t => t.tileId);
         const nowCachedIds = await tileCacheService.checkExistingTiles(pendingIds);
         
@@ -156,10 +161,6 @@ exports.pollTiles = async (req, res) => {
     }
 };
 
-/**
- * Secure Tile Proxy Endpoint. 
- * Reads raw binary from Redis/Disk and pipes to res.
- */
 exports.serveTile = async (req, res) => {
     try {
         const { tileId } = req.params;
@@ -170,9 +171,8 @@ exports.serveTile = async (req, res) => {
             return res.status(202).json({ success: false, message: 'Tile not ready yet' });
         }
 
-        // Return the binary data
         res.setHeader('Content-Type', 'image/png');
-        res.setHeader('Cache-Control', 'public, max-age=7200'); // 2 hours browser cache
+        res.setHeader('Cache-Control', 'public, max-age=7200');
         return res.end(imageBuffer, 'binary');
 
     } catch (error) {
@@ -180,9 +180,6 @@ exports.serveTile = async (req, res) => {
     }
 };
 
-/**
- * Remove session and tiles
- */
 exports.deleteSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -194,11 +191,6 @@ exports.deleteSession = async (req, res) => {
     }
 };
 
-/**
- * Pass-through AI Analysis.
- * Receives tileIds from the frontend, forwards them to the GPU AI Engine.
- * The GPU reads tile binaries directly from Redis and runs YOLO inference.
- */
 exports.analyzeRoute = async (req, res) => {
     try {
         const { sessionId } = req.params;
@@ -208,7 +200,6 @@ exports.analyzeRoute = async (req, res) => {
             return res.status(400).json({ success: false, error: 'tileIds array is required' });
         }
 
-        // Local fallback: http://localhost:8001
         const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'https://aerialvision.onrender.com';
 
         console.log(`🧠 Forwarding ${tileIds.length} tiles to AI Engine for analysis...`);
@@ -218,7 +209,7 @@ exports.analyzeRoute = async (req, res) => {
             tileIds,
             model: model || 'mark-5'
         }, {
-            timeout: 120000 // 2 min timeout for large batches
+            timeout: 120000
         });
 
         if (req.user) {
@@ -247,9 +238,6 @@ exports.analyzeRoute = async (req, res) => {
     }
 };
 
-/**
- * Fetch history of emergency route sessions
- */
 exports.getRouteHistory = async (req, res) => {
     try {
         const db = getFirestore();

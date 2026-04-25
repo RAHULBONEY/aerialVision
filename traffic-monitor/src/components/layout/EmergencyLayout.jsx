@@ -20,7 +20,7 @@ export default function EmergencyLayout() {
                     <div className="flex items-center gap-3">
                         <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
                         <span className="text-xs font-mono text-gray-600 dark:text-emerald-500 tracking-[0.2em] uppercase transition-colors duration-300">
-                            Hospital Link Active
+                            Ambulance Link Active
                         </span>
                     </div>
 

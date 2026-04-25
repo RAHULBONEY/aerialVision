@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Activity, AlertTriangle, Zap, MapPin, Wifi, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { computeDensityPercent, computeSpeedFromDensity } from "@/hooks/useLiveStreamMetrics";
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8001";
 
@@ -56,8 +57,9 @@ export default function StreamCard({ stream, onClick }) {
 
     const status = statusConfig[stream.currentStatus] || statusConfig.NORMAL;
     const StatusIcon = status.icon;
-    const density = stream.metrics?.density || 0;
-    const speed = stream.metrics?.speed || 0;
+    const densityPercent = stream.metrics?.densityPercent ?? computeDensityPercent(stream.metrics?.count);
+    const density = densityPercent / 100;
+    const speed = stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent);
 
     const thumbnailUrl = getStreamThumbnail(stream.id, stream.viewType, stream.type, stream.simulationId);
 

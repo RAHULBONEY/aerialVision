@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useStreams, useCreateStream, useToggleStream, useStopStream } from "@/hooks/useStreams";
 import { cn } from "@/lib/utils";
 import CreateStreamModal from "@/components/admin/CreateStreamModal";
@@ -7,7 +8,8 @@ import StreamDetailModal from "@/components/admin/StreamDetailModal";
 
 import {
     Play, Pause, Eye, Video, AlertTriangle,
-    ChevronUp, ChevronDown, Settings, Wifi, WifiOff
+    ChevronUp, ChevronDown, Settings, Wifi, WifiOff,
+    Activity
 } from "lucide-react";
 
 
@@ -52,7 +54,7 @@ const SortableHeader = ({ column, children, isActive, sortOrder, onClick }) => (
     </th>
 );
 
-function StreamRow({ stream, onToggle, onView, onStop }) {
+function StreamRow({ stream, onToggle, onView, onStop, onTelemetry }) {
     const [isHovered, setIsHovered] = useState(false);
     const model = MODEL_OPTIONS.find(m => m.id === stream.model) || MODEL_OPTIONS[0];
 
@@ -104,19 +106,26 @@ function StreamRow({ stream, onToggle, onView, onStop }) {
                     <button
                         onClick={() => onToggle(stream.id)}
                         title={stream.status === "active" ? "Pause" : "Start"}
-                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                        className="p-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-900 dark:bg-gray-800 dark:border-transparent dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white transition-colors shadow-sm"
                     >
                         {stream.status === "active" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                     </button>
                     <button
                         onClick={() => onView(stream)}
-                        className="p-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 transition-colors"
+                        className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 dark:bg-blue-900/30 dark:border-transparent dark:text-blue-400 transition-colors shadow-sm"
                     >
                         <Eye className="w-4 h-4" />
                     </button>
                     <button
+                        onClick={() => onTelemetry(stream.id)}
+                        title="Live Telemetry"
+                        className="p-2 rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-700 hover:bg-cyan-100 hover:border-cyan-300 dark:bg-cyan-900/30 dark:border-transparent dark:text-cyan-400 transition-colors shadow-sm"
+                    >
+                        <Activity className="w-4 h-4" />
+                    </button>
+                    <button
                         onClick={() => onStop(stream.id)}
-                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                        className="p-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-900 dark:bg-gray-800 dark:border-transparent dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white transition-colors shadow-sm"
                     >
                         <Settings className="w-4 h-4" />
                     </button>
@@ -126,14 +135,13 @@ function StreamRow({ stream, onToggle, onView, onStop }) {
     );
 }
 
-// 3. MAIN COMPONENT
 export default function Streams() {
     const { data = [] } = useStreams();
     const createStreamMutation = useCreateStream();
     const toggleStreamMutation = useToggleStream();
     const stopStreamMutation = useStopStream();
+    const navigate = useNavigate();
 
-    // if (data.length > 0) console.log("✅ Streams Data Received:", data);
     const [openCreateModal, setOpenCreateModal] = useState(false);
     const [selectedStream, setSelectedStream] = useState(null);
     const [search, setSearch] = useState("");
@@ -142,6 +150,9 @@ export default function Streams() {
     const handleViewStream = (stream) => {
 
         setSelectedStream(stream);
+    };
+    const handleTelemetry = (id) => {
+        navigate(`/admin/streams/${id}/telemetry`);
     };
 
     const filteredStreams = useMemo(() => {
@@ -177,7 +188,7 @@ export default function Streams() {
     return (
         <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-950 min-h-screen">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight">Live Streams Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Live Streams Dashboard</h1>
                 <button
                     onClick={() => setOpenCreateModal(true)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
@@ -230,8 +241,9 @@ export default function Streams() {
                                         key={stream.id}
                                         stream={stream}
                                         onToggle={(id) => toggleStreamMutation.mutate({ id, status: stream.status })}
-                                        onView={handleViewStream} // Use the wrapper function
+                                        onView={handleViewStream}
                                         onStop={(id) => stopStreamMutation.mutate(id)}
+                                        onTelemetry={handleTelemetry}
                                     />
                                 ))
                             ) : (
