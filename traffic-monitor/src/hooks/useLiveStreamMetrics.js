@@ -71,7 +71,6 @@ export function useLiveStreamMetrics(streamIds = []) {
     const current = new Set(streamIds);
     const prev = joinedRef.current;
 
-    // Join new rooms
     current.forEach((id) => {
       if (!prev.has(id)) {
         socket.emit('join_stream', id);
@@ -93,20 +92,11 @@ export function useLiveStreamMetrics(streamIds = []) {
   return metricsMap;
 }
 
-/**
- * Compute density percentage from live vehicle count.
- * 50 vehicles = 100% capacity (tunable).
- */
 export function computeDensityPercent(count, maxCapacity = 50) {
   if (!count || count <= 0) return 0;
   return Math.min((count / maxCapacity) * 100, 100);
 }
 
-/**
- * Compute fluctuating average speed inversely correlated to density.
- * Higher density  → lower speed.
- * Adds small sinusoidal fluctuation so it feels alive.
- */
 export function computeSpeedFromDensity(densityPercent) {
   const clamped = Math.max(0, Math.min(100, densityPercent));
   const baseSpeed = 70; // km/h on empty road

@@ -6,7 +6,6 @@ import { computeDensityPercent, computeSpeedFromDensity } from "@/hooks/useLiveS
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8001";
 
 const getStreamThumbnail = (id, type, streamType, simulationId) => {
-    // For simulations, return the video URL from Gateway
     if (streamType === 'SIMULATION' && simulationId) {
         return `${GATEWAY_URL}/streams/${simulationId}.mp4`;
     }
@@ -108,7 +107,6 @@ export default function StreamCard({ stream, onClick }) {
                 {/* Thumbnail */}
                 <div className="relative aspect-video rounded-lg overflow-hidden mb-4 border border-gray-200 dark:border-slate-800/50 bg-gray-100 dark:bg-black">
                     {isSimulation ? (
-                        // For simulations, show video with poster
                         <video
                             src={thumbnailUrl}
                             className="w-full h-full object-cover opacity-90 dark:opacity-70 group-hover:opacity-100 transition-opacity duration-300"

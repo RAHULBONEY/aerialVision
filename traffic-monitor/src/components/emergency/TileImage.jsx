@@ -48,7 +48,6 @@ export function TileImage({ tileId, proxyUrl, alt = 'satellite tile' }) {
 
         fetchImageBytes();
 
-        // Cleanup memory when component unmounts
         return () => {
             isMounted = false;
             if (objectUrl) {

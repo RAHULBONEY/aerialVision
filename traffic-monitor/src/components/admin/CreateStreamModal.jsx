@@ -34,7 +34,6 @@ export default function CreateStreamModal({ open, onClose, onCreate, modelOption
 
     const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
-    // Fetch simulations on mount
     useEffect(() => {
         let mounted = true;
 

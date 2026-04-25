@@ -22,7 +22,6 @@ export default function Dashboard() {
 
     const isLoading = incidentsLoading || streamsLoading;
 
-    // Get emergency-relevant streams (warning or critical)
     const emergencyStreams = streams?.filter(s =>
         s.currentStatus === 'WARNING' || s.currentStatus === 'CRITICAL'
     ) || [];

@@ -1,9 +1,5 @@
 const patrolUnitsService = require("../services/patrolUnits.service");
 
-/**
- * Create a new patrol unit
- * POST /api/traffic-police/patrol-units
- */
 exports.createPatrolUnit = async (req, res) => {
   try {
     const createdByUid = req.user.uid;
@@ -23,10 +19,6 @@ exports.createPatrolUnit = async (req, res) => {
   }
 };
 
-/**
- * Get all patrol units
- * GET /api/traffic-police/patrol-units
- */
 exports.getAllPatrolUnits = async (req, res) => {
   try {
     const units = await patrolUnitsService.getAll();
@@ -45,10 +37,6 @@ exports.getAllPatrolUnits = async (req, res) => {
   }
 };
 
-/**
- * Get a single patrol unit
- * GET /api/traffic-police/patrol-units/:id
- */
 exports.getPatrolUnit = async (req, res) => {
   try {
     const unit = await patrolUnitsService.getById(req.params.id);
@@ -66,10 +54,6 @@ exports.getPatrolUnit = async (req, res) => {
   }
 };
 
-/**
- * Update patrol unit location
- * PATCH /api/traffic-police/patrol-units/:id/location
- */
 exports.updateLocation = async (req, res) => {
   try {
     const { location } = req.body;
@@ -89,10 +73,6 @@ exports.updateLocation = async (req, res) => {
   }
 };
 
-/**
- * Update patrol unit status
- * PATCH /api/traffic-police/patrol-units/:id/status
- */
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -112,10 +92,6 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
-/**
- * Dispatch patrol unit to an incident
- * PATCH /api/traffic-police/patrol-units/:id/dispatch
- */
 exports.dispatchToIncident = async (req, res) => {
   try {
     const { incidentId } = req.body;
@@ -140,10 +116,6 @@ exports.dispatchToIncident = async (req, res) => {
   }
 };
 
-/**
- * Delete a patrol unit
- * DELETE /api/traffic-police/patrol-units/:id
- */
 exports.deletePatrolUnit = async (req, res) => {
   try {
     await patrolUnitsService.remove(req.params.id);

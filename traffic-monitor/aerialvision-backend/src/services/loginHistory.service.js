@@ -52,7 +52,6 @@ exports.list = async (params = {}) => {
     query = query.where("uid", "==", params.uid);
   }
 
-  // Handle cursor pagination
   if (params.cursor) {
     try {
       const cursorDoc = await db.collection(LOGIN_HISTORY_COLLECTION).doc(params.cursor).get();
@@ -64,7 +63,6 @@ exports.list = async (params = {}) => {
     }
   }
 
-  // Fetch one extra to determine if there's a next page
   const snap = await query.limit(pageSize + 1).get();
   
   const docs = snap.docs.map(doc => ({
