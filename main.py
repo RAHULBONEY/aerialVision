@@ -14,10 +14,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from tqdm import tqdm
 from ultralytics import YOLO
 
-# =========================
-# CONFIG
-# =========================
-
 MODEL_PATH = "best.pt"
 UPLOAD_DIR = "videos_uploaded"
 PROCESSED_DIR = "videos_processed"
@@ -35,20 +31,12 @@ ZONES = [
 
 VEHICLE_CLASSES = {"car", "truck", "bus", "van"}
 
-# =========================
-# SETUP
-# =========================
-
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 print("[INIT] Loading model...")
 model = YOLO(MODEL_PATH)
 print("[INIT] Model loaded")
-
-# =========================
-# FASTAPI
-# =========================
 
 app = FastAPI(title="Aerial Vision API")
 
@@ -59,10 +47,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# =========================
-# ANALYTICS
-# =========================
 
 class TrafficAnalytics:
     def __init__(self):
@@ -79,10 +63,6 @@ class TrafficAnalytics:
 
 analytics = TrafficAnalytics()
 
-# =========================
-# EMERGENCY VEHICLE LOGIC
-# =========================
-
 def is_emergency_vehicle(frame, box):
     x1, y1, x2, y2 = box
     roi = frame[y1:y2, x1:x2]
@@ -92,15 +72,12 @@ def is_emergency_vehicle(frame, box):
 
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # Red
     red1 = cv2.inRange(hsv, (0, 90, 60), (10, 255, 255))
     red2 = cv2.inRange(hsv, (170, 90, 60), (180, 255, 255))
     red_mask = red1 + red2
 
-    # Blue
     blue_mask = cv2.inRange(hsv, (95, 80, 50), (140, 255, 255))
 
-    # White (ambulance body cue)
     white_mask = cv2.inRange(hsv, (0, 0, 200), (180, 40, 255))
 
     red_ratio = red_mask.mean() / 255.0
@@ -112,11 +89,6 @@ def is_emergency_vehicle(frame, box):
         blue_ratio > 0.010 or
         (white_ratio > 0.25 and (red_ratio + blue_ratio) > 0.005)
     )
-
-
-# =========================
-# ROUTES
-# =========================
 
 @app.get("/")
 def health():
@@ -157,7 +129,6 @@ async def process_video(video: UploadFile = File(...)):
         frame = results.orig_img.copy()
         h, w, _ = frame.shape
 
-        # ================= DETECTIONS =================
         if results.boxes is not None and len(results.boxes) > 0:
 
             boxes = results.boxes.xyxy.cpu().numpy()
@@ -183,7 +154,6 @@ async def process_video(video: UploadFile = File(...)):
                 label_name = model.names[int(cls)]
                 color = (0, 255, 0)
 
-                # Emergency vehicle detection
                 box_area = (x2 - x1) * (y2 - y1)
                 frame_area = w * h
 
@@ -206,7 +176,6 @@ async def process_video(video: UploadFile = File(...)):
                     2,
                 )
 
-        # ================= ZONES =================
         overlay = frame.copy()
         for z in ZONES:
             x1n, y1n, x2n, y2n = z["xyxyn"]
@@ -226,10 +195,6 @@ async def process_video(video: UploadFile = File(...)):
     os.remove(input_path)
 
     return FileResponse(output_path, media_type="video/mp4")
-
-# =========================
-# ENTRY
-# =========================
 
 if __name__ == "__main__":
     print("[START] API running at http://127.0.0.1:8000")

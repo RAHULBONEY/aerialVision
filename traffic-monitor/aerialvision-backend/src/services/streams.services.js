@@ -118,13 +118,18 @@ exports.update = async (id, updates) => {
   return { id, ...doc.data() };
 };
 
-exports.listActive = async () => {
+exports.listActive = async (userRole) => {
   const snap = await db
     .collection(COLLECTION)
-    .where("status", "!=", "DELETED")
+    .where("status", "==", "active")
     .get();
-  return snap.docs.map(d => ({ 
-    id: d.id, 
-    ...d.data() 
-  }));
+
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(s =>
+      userRole === "ADMIN" ||
+      !s.assignedRoles ||
+      s.assignedRoles.length === 0 ||
+      s.assignedRoles.includes(userRole)
+    );
 };

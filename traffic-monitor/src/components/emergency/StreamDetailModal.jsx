@@ -1,26 +1,20 @@
-import React from 'react';
-import { X, Activity, MapPin, Wifi, Eye, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Activity, MapPin, Wifi, WifiOff, AlertTriangle, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { computeDensityPercent, computeSpeedFromDensity } from '@/hooks/useLiveStreamMetrics';
 
-const getStreamThumbnail = (id, type) => {
-    const placeholders = {
-        aerial: [
-            "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?q=80&w=800&auto=format&fit=crop",
-            "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=800&auto=format&fit=crop",
-        ],
-        ground: [
-            "https://images.unsplash.com/photo-1545459720-aacaf509ebc3?q=80&w=800&auto=format&fit=crop",
-            "https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop",
-        ]
-    };
-
-    const collection = type === 'aerial' ? placeholders.aerial : placeholders.ground;
-    const index = id?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % collection.length || 0;
-    return collection[index];
-};
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8001";
 
 export default function StreamDetailModal({ stream, onClose }) {
     if (!stream) return null;
+
+    const [videoLoaded, setVideoLoaded] = useState(false);
+    const [videoError, setVideoError] = useState(false);
+
+    const isSimulation = stream.type === "SIMULATION";
+    const videoUrl = isSimulation
+        ? `${GATEWAY_URL}/streams/${encodeURIComponent(stream.simulationId)}.mp4`
+        : `${GATEWAY_URL}/streams/${stream.id}`;
 
     const statusConfig = {
         NORMAL: {
@@ -41,12 +35,13 @@ export default function StreamDetailModal({ stream, onClose }) {
     };
 
     const status = statusConfig[stream.currentStatus] || statusConfig.NORMAL;
-    const density = stream.metrics?.density || 0;
-    const speed = stream.metrics?.speed || 0;
+    const densityPercent = stream.metrics?.densityPercent ?? computeDensityPercent(stream.metrics?.count);
+    const density = densityPercent / 100;
+    const speed = stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-[#0a0a12] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-gray-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 sm:pt-10 bg-black/50 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#0a0a12] rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-gray-200/50 dark:border-white/[0.06] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.03]">
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
                     <div className="flex items-center gap-3">
@@ -78,33 +73,71 @@ export default function StreamDetailModal({ stream, onClose }) {
                 {/* Content */}
                 <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-80px)]">
                     {/* Video Feed */}
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
-                        <img
-                            src={getStreamThumbnail(stream.id, stream.viewType)}
-                            alt={`Live feed from ${stream.name}`}
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 dark:border-slate-800">
+                        {isSimulation ? (
+                            <video
+                                src={videoUrl}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                controls
+                                className="w-full h-full object-contain"
+                                onLoadedData={() => setVideoLoaded(true)}
+                                onError={() => setVideoError(true)}
+                            />
+                        ) : (
+                            <img
+                                src={videoUrl}
+                                alt={`Live feed from ${stream.name}`}
+                                className="w-full h-full object-contain"
+                                onLoad={() => setVideoLoaded(true)}
+                                onError={() => setVideoError(true)}
+                            />
+                        )}
 
-                        {/* Live Badge */}
-                        <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                            <span className="text-sm text-white font-mono">LIVE</span>
-                        </div>
+                        {/* Overlays */}
+                        {!videoLoaded && !videoError && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                                <div className="text-center">
+                                    <div className="w-10 h-10 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
+                                    <p className="text-gray-300 text-sm">Connecting to stream…</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {videoError && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                                <div className="text-center p-6">
+                                    <WifiOff className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                                    <h3 className="text-white font-medium mb-1">Stream Offline</h3>
+                                    <p className="text-gray-400 text-sm">Unable to connect to video source.</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Status Badge */}
-                        <div className={cn(
-                            "absolute top-4 right-4 px-3 py-1.5 rounded-lg text-sm font-bold",
-                            status.bg, status.text
-                        )}>
-                            {status.label}
-                        </div>
+                        {videoLoaded && !videoError && (
+                            <div className={cn(
+                                "absolute top-4 right-4 px-3 py-1.5 rounded-lg text-sm font-bold",
+                                status.bg, status.text
+                            )}>
+                                {status.label}
+                            </div>
+                        )}
 
-                        {/* Read-Only Indicator */}
-                        <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-                            <Eye size={14} className="text-white" />
-                            <span className="text-xs text-white">Read-Only View</span>
-                        </div>
+                        {/* Live / Sim Badge */}
+                        {videoLoaded && !videoError && (
+                            <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                                <div className={cn(
+                                    "w-2 h-2 rounded-full animate-pulse",
+                                    isSimulation ? "bg-amber-500" : "bg-red-500"
+                                )} />
+                                <span className="text-sm text-white font-mono">
+                                    {isSimulation ? "SIMULATION" : "LIVE"}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Metrics Grid */}
@@ -134,15 +167,18 @@ export default function StreamDetailModal({ stream, onClose }) {
                         <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 text-center">
                             <p className="text-xs text-gray-500 dark:text-slate-500 uppercase tracking-wide mb-1">Model</p>
                             <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 font-mono">
-                                {stream.activeModel || 'N/A'}
+                                {stream.model || 'N/A'}
                             </p>
                         </div>
 
                         <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 text-center">
                             <p className="text-xs text-gray-500 dark:text-slate-500 uppercase tracking-wide mb-1">Connection</p>
-                            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
-                                <Wifi size={20} />
-                                Strong
+                            <p className={cn(
+                                "text-2xl font-bold flex items-center justify-center gap-2",
+                                videoError ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                            )}>
+                                {videoError ? <WifiOff size={20} /> : <Wifi size={20} />}
+                                {videoError ? "Offline" : "Strong"}
                             </p>
                         </div>
                     </div>
@@ -150,7 +186,7 @@ export default function StreamDetailModal({ stream, onClose }) {
                     {/* Info Notice */}
                     <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-xl p-4">
                         <div className="flex items-start gap-3">
-                            <Eye size={20} className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                            <Play size={20} className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
                             <div>
                                 <p className="font-medium text-rose-800 dark:text-rose-300">Read-Only Access</p>
                                 <p className="text-sm text-rose-700 dark:text-rose-400 mt-1">

@@ -12,7 +12,8 @@ import {
     Sun,
     User,
     LogOut,
-    ShieldCheck
+    ShieldCheck,
+    Bot
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeProvider";
@@ -25,6 +26,7 @@ const navItems = [
     { label: "Incidents", path: "/police/incidents", icon: AlertTriangle },
     { label: "Emergency Comms", path: "/police/comms", icon: Radio },
     { label: "Patrol Units", path: "/police/units", icon: Siren },
+    { label: "Copilot", path: "/police/copilot", icon: Bot },
 ];
 
 export default function PoliceSidebar() {
@@ -89,7 +91,7 @@ export default function PoliceSidebar() {
             </div>
 
 
-            <nav className="flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-900/50">
+            <nav className="flex-1 p-4 overflow-y-auto sidebar-scroll">
                 <div className="space-y-1">
                     {navItems.map((item) => {
                         const Icon = item.icon;

@@ -45,7 +45,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-center h-[60vh]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-gray-600 dark:text-slate-400 animate-pulse">Establishing Hospital Uplink...</p>
+                    <p className="text-gray-600 dark:text-slate-400 animate-pulse">Establishing Ambulance Uplink...</p>
                 </div>
             </div>
         );

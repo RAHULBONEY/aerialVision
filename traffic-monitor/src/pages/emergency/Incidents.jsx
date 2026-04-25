@@ -106,7 +106,7 @@ export default function Incidents() {
                 {/* Incident Details Panel */}
                 <div className="lg:col-span-1">
                     {selectedIncident ? (
-                        <div className="bg-white dark:bg-[#0a0a12] border border-gray-200 dark:border-slate-800/50 rounded-xl p-6 sticky top-6">
+                        <div className="bg-white dark:bg-[#0a0a12] border border-gray-200 dark:border-slate-800/50 rounded-xl p-6 sticky top-6 overflow-y-auto max-h-[calc(100vh-3rem)]">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Incident Details</h3>
                                 <button
@@ -168,6 +168,15 @@ export default function Incidents() {
                                                 <p className="text-xs text-gray-500 dark:text-slate-500">Density</p>
                                             </div>
                                         </div>
+                                        {selectedIncident.snapshot?.image?.data && (
+                                            <div className="mt-3">
+                                                <img
+                                                    src={selectedIncident.snapshot.image.data}
+                                                    alt="Incident snapshot"
+                                                    className="w-full rounded-lg border border-gray-200 dark:border-slate-700"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

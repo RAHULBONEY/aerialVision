@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useEmergencyRoutes } from '../../hooks/useEmergencyRoutes';
 import { TileImage } from './TileImage';
+import { useTheme } from '@/context/ThemeProvider';
 import { MapPin, Navigation, Trash2, Loader2, Search, AlertTriangle, Satellite, Brain, Zap, History, Clock } from 'lucide-react';
 
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const MUMBAI_CENTER = { lat: 19.076, lng: 72.8777 };
 
-// ─── Dark Map Styles (reused from PatrolUnitMap) ──────────────────────
+// ─── Dark Map Styles ──────────────────────────────────────────────────
 const MAP_STYLES = [
     { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
     { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
@@ -25,6 +26,27 @@ const MAP_STYLES = [
     { featureType: "poi", elementType: "labels.text.stroke", stylers: [{ color: "#1d2c4d" }] },
     { featureType: "transit", elementType: "labels.text.fill", stylers: [{ color: "#98a5be" }] },
     { featureType: "transit", elementType: "labels.text.stroke", stylers: [{ color: "#1d2c4d" }] },
+];
+
+// ─── Light Map Styles ─────────────────────────────────────────────────
+const LIGHT_MAP_STYLES = [
+    { elementType: "geometry", stylers: [{ color: "#f8fafc" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#475569" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#f8fafc" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#64748b" }] },
+    { featureType: "road", elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#e2e8f0" }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#cbd5e1" }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#f1f5f9" }] },
+    { featureType: "landscape.man_made", elementType: "geometry.stroke", stylers: [{ color: "#e2e8f0" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#e0f2fe" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#64748b" }] },
+    { featureType: "poi", elementType: "geometry", stylers: [{ color: "#f1f5f9" }] },
+    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#94a3b8" }] },
+    { featureType: "poi", elementType: "labels.text.stroke", stylers: [{ color: "#f8fafc" }] },
+    { featureType: "transit", elementType: "labels.text.fill", stylers: [{ color: "#64748b" }] },
+    { featureType: "transit", elementType: "labels.text.stroke", stylers: [{ color: "#f8fafc" }] },
 ];
 
 function createPinSvg(color, label) {
@@ -71,7 +93,7 @@ function PlacesInput({ placeholder, value, onChange, onPlaceSelect, icon: Icon, 
                 placeholder={placeholder}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full bg-gray-800/80 border border-gray-600 text-white placeholder-gray-500 text-sm rounded-lg py-2.5 pl-10 pr-4 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-500/30 transition-all"
+                className="w-full bg-white dark:bg-gray-800/80 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm rounded-lg py-2.5 pl-10 pr-4 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30 transition-all shadow-sm"
             />
         </div>
     );
@@ -80,6 +102,7 @@ function PlacesInput({ placeholder, value, onChange, onPlaceSelect, icon: Icon, 
 // ─── Main Component ───────────────────────────────────────────────────
 export function RouteSelector() {
     const { computeRoutes, pollTileProgress, analyzeRoute, fetchRouteHistory, loading, error, session, routes } = useEmergencyRoutes();
+    const { theme } = useTheme();
 
     // Map state
     const mapRef = useRef(null);
@@ -143,7 +166,7 @@ export function RouteSelector() {
         const map = new window.google.maps.Map(mapRef.current, {
             center: MUMBAI_CENTER,
             zoom: 13,
-            styles: MAP_STYLES,
+            styles: theme === 'dark' ? MAP_STYLES : LIGHT_MAP_STYLES,
             disableDefaultUI: true,
             zoomControl: true,
             zoomControlOptions: { position: window.google.maps.ControlPosition.RIGHT_BOTTOM },
@@ -157,6 +180,14 @@ export function RouteSelector() {
 
         mapInstanceRef.current = map;
     }, [isMapLoaded]);
+
+    // ── Update Map Theme Dynamically ──────────────────────────────────
+    useEffect(() => {
+        if (!mapInstanceRef.current) return;
+        mapInstanceRef.current.setOptions({
+            styles: theme === 'dark' ? MAP_STYLES : LIGHT_MAP_STYLES
+        });
+    }, [theme]);
 
     // ── Handle Map Click ──────────────────────────────────────────────
     const handleMapClick = useCallback((coord) => {
@@ -274,13 +305,13 @@ export function RouteSelector() {
                 geodesic: true,
                 strokeColor: idx === 0 ? '#3b82f6' : '#6b7280',
                 strokeOpacity: idx === 0 ? 0.9 : 0.5,
-                strokeWeight: idx === 0 ? 5 : 3,
+                strokeWeight: idx === 0 ? (theme === 'dark' ? 5 : 6) : (theme === 'dark' ? 3 : 4),
                 map: mapInstanceRef.current,
             });
 
             routePolylinesRef.current.push(polyline);
         });
-    }, []);
+    }, [theme]);
 
     // ── Draw Heatmap Route (replaces blue polyline with colored segments) ──
     const drawHeatmapRoute = useCallback((analysisData) => {
@@ -333,7 +364,7 @@ export function RouteSelector() {
 
             routePolylinesRef.current.push(segment);
         }
-    }, [routes]);
+    }, [routes, theme]);
 
     // ── Generate Route ────────────────────────────────────────────────
     const handleGenerate = async () => {
@@ -393,28 +424,28 @@ export function RouteSelector() {
     // ── RENDER ────────────────────────────────────────────────────────
     if (!GOOGLE_MAPS_KEY) {
         return (
-            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-                <div className="text-center p-8">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg">
                     <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-                    <h3 className="text-white font-semibold">Google Maps API Key Required</h3>
-                    <p className="text-gray-400 text-sm mt-1">Add VITE_GOOGLE_MAPS_API_KEY to your .env file</p>
+                    <h3 className="text-gray-900 dark:text-white font-semibold">Google Maps API Key Required</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Add VITE_GOOGLE_MAPS_API_KEY to your .env file</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
             {/* ─── Header ──────────────────────────────────────────── */}
-            <div className="border-b border-gray-700/50 bg-gray-900/95 backdrop-blur-sm sticky top-0 z-20 px-6 py-4">
+            <div className="border-b border-gray-200 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm sticky top-0 z-20 px-6 py-4 shadow-sm dark:shadow-none">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                            <Satellite className="w-5 h-5 text-blue-400" />
+                        <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-500/20">
+                            <Satellite className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold">Emergency Route Planner</h1>
-                            <p className="text-xs text-gray-400">Click on the map or search to set origin & destination</p>
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Emergency Route Planner</h1>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Click on the map or search to set origin & destination</p>
                         </div>
                     </div>
 
@@ -423,12 +454,12 @@ export function RouteSelector() {
                         {/* Status pill */}
                         <div className="flex items-center gap-2 mr-2">
                             {origin && !destination && (
-                                <span className="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-3 py-1.5 rounded-full animate-pulse">
+                                <span className="text-xs bg-amber-50 dark:bg-yellow-500/10 text-amber-700 dark:text-yellow-400 border border-amber-200 dark:border-yellow-500/20 px-3 py-1.5 rounded-full animate-pulse">
                                     Click map to set destination
                                 </span>
                             )}
                             {!origin && (
-                                <span className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-3 py-1.5 rounded-full animate-pulse">
+                                <span className="text-xs bg-emerald-50 dark:bg-green-500/10 text-emerald-700 dark:text-green-400 border border-emerald-200 dark:border-green-500/20 px-3 py-1.5 rounded-full animate-pulse">
                                     Click map to set origin
                                 </span>
                             )}
@@ -437,7 +468,7 @@ export function RouteSelector() {
                         {/* History Toggle */}
                         <button
                             onClick={() => setShowHistory(!showHistory)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm font-medium ${showHistory ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm font-medium ${showHistory ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/50 text-indigo-700 dark:text-indigo-400' : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                         >
                             <History className="w-4 h-4" />
                             <span>History</span>
@@ -468,7 +499,7 @@ export function RouteSelector() {
                     <button
                         onClick={handleGenerate}
                         disabled={!origin || !destination || loading}
-                        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold text-sm px-5 py-2.5 rounded-lg border border-blue-400/30 disabled:border-gray-600 transition-all shadow-lg shadow-blue-500/10 disabled:shadow-none disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-700 dark:disabled:to-gray-700 text-white font-semibold text-sm px-5 py-2.5 rounded-lg border border-blue-400/30 disabled:border-gray-300 dark:disabled:border-gray-600 transition-all shadow-lg shadow-blue-500/10 disabled:shadow-none disabled:cursor-not-allowed"
                     >
                         {loading ? (
                             <><Loader2 className="w-4 h-4 animate-spin" /> Computing...</>
@@ -478,14 +509,14 @@ export function RouteSelector() {
                     </button>
                     <button
                         onClick={handleClear}
-                        className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-sm px-4 py-2.5 rounded-lg border border-gray-600 hover:border-gray-500 transition-all"
+                        className="flex items-center gap-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-sm px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-all shadow-sm"
                     >
                         <Trash2 className="w-4 h-4" /> Clear
                     </button>
                 </div>
 
                 {error && (
-                    <div className="text-red-400 p-3 border border-red-500/30 bg-red-900/20 mb-4 rounded-lg text-sm">
+                    <div className="text-red-600 dark:text-red-400 p-3 border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-900/20 mb-4 rounded-lg text-sm">
                         {error}
                     </div>
                 )}
@@ -494,30 +525,30 @@ export function RouteSelector() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                     {/* Google Map */}
-                    <div className="lg:col-span-2 relative rounded-xl overflow-hidden border border-gray-700/50 bg-gray-800" style={{ minHeight: '500px' }}>
+                    <div className="lg:col-span-2 relative rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700/50 bg-gray-100 dark:bg-gray-800 shadow-sm" style={{ minHeight: '500px' }}>
                         <div ref={mapRef} className="absolute inset-0" />
 
                         {!isMapLoaded && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                            <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900">
                                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                             </div>
                         )}
 
                         {/* History Overlay Panel */}
                         {showHistory && (
-                            <div className="absolute top-4 right-4 w-80 max-h-[calc(100%-32px)] bg-gray-900/95 backdrop-blur-md rounded-xl border border-gray-600 shadow-2xl overflow-hidden flex flex-col z-10 transition-all">
-                                <div className="p-3 border-b border-gray-700 bg-gray-800/80 flex justify-between items-center">
-                                    <h3 className="font-semibold text-sm flex items-center gap-2">
-                                        <History className="w-4 h-4 text-indigo-400" /> Recent Routes
+                            <div className="absolute top-4 right-4 w-80 max-h-[calc(100%-32px)] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-600 shadow-2xl overflow-hidden flex flex-col z-10 transition-all">
+                                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex justify-between items-center">
+                                    <h3 className="font-semibold text-sm flex items-center gap-2 text-gray-900 dark:text-white">
+                                        <History className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Recent Routes
                                     </h3>
-                                    <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white">
+                                    <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white">
                                         &times;
                                     </button>
                                 </div>
                                 <div className="p-2 overflow-y-auto flex-1 space-y-2">
                                     {loading && routeHistory.length === 0 ? (
                                         <div className="flex items-center justify-center p-4">
-                                            <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                                            <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400" />
                                         </div>
                                     ) : routeHistory.length === 0 ? (
                                         <div className="text-center p-4 text-sm text-gray-500">No route history found</div>
@@ -526,17 +557,17 @@ export function RouteSelector() {
                                             <div
                                                 key={item.sessionId}
                                                 onClick={() => handleLoadHistoryItem(item)}
-                                                className="p-3 rounded-lg bg-gray-800 border border-gray-700 hover:border-indigo-500/50 hover:bg-gray-750 cursor-pointer transition-all"
+                                                className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:bg-gray-100 dark:hover:bg-gray-750 cursor-pointer transition-all"
                                             >
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <div className="text-xs text-gray-400 flex items-center gap-1">
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                                         <Clock className="w-3 h-3" />
                                                         {new Date(item.createdAt).toLocaleString(undefined, {
                                                             month: 'short', day: 'numeric',
                                                             hour: '2-digit', minute: '2-digit'
                                                         })}
                                                     </div>
-                                                    <div className="text-[10px] font-mono bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">
+                                                    <div className="text-[10px] font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
                                                         {item.metadata?.totalDistanceKm?.toFixed(1) || '?'} km
                                                     </div>
                                                 </div>
@@ -544,13 +575,13 @@ export function RouteSelector() {
                                                 <div className="space-y-1.5">
                                                     <div className="flex items-start gap-2">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
-                                                        <div className="text-xs font-medium truncate" title={item.origin?.label}>
+                                                        <div className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate" title={item.origin?.label}>
                                                             {item.origin?.label || 'Unknown Origin'}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-start gap-2">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
-                                                        <div className="text-xs font-medium truncate" title={item.destination?.label}>
+                                                        <div className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate" title={item.destination?.label}>
                                                             {item.destination?.label || 'Unknown Destination'}
                                                         </div>
                                                     </div>
@@ -566,32 +597,32 @@ export function RouteSelector() {
                     {/* Results Panel */}
                     <div className="space-y-4">
                         {/* Selected Points */}
-                        <div className="bg-gray-800 p-4 rounded-xl border border-gray-700/50">
-                            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Selected Points</h2>
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">Selected Points</h2>
 
                             <div className="space-y-2">
-                                <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-900/50">
-                                    <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-xs font-bold text-green-400">A</div>
-                                    <span className="text-sm text-gray-300 truncate">{origin ? originText : 'Not set'}</span>
+                                <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-100 dark:bg-gray-900/50">
+                                    <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center text-xs font-bold text-green-700 dark:text-green-400">A</div>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{origin ? originText : 'Not set'}</span>
                                 </div>
-                                <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-900/50">
-                                    <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center text-xs font-bold text-red-400">B</div>
-                                    <span className="text-sm text-gray-300 truncate">{destination ? destText : 'Not set'}</span>
+                                <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-100 dark:bg-gray-900/50">
+                                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center text-xs font-bold text-red-700 dark:text-red-400">B</div>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{destination ? destText : 'Not set'}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Route Metrics */}
                         {session && routes.length > 0 && (
-                            <div className="bg-gray-800 p-4 rounded-xl border border-gray-700/50">
-                                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Route Details</h2>
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">Route Details</h2>
                                 <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                                     {routes.map((route, idx) => (
-                                        <div key={idx} className={`p-3 rounded-lg text-sm ${idx === 0 ? 'bg-blue-900/20 border border-blue-500/20' : 'bg-gray-900/50 border border-gray-700/30'}`}>
-                                            <h3 className={`font-bold text-xs uppercase tracking-wider mb-1 ${idx === 0 ? 'text-blue-400' : 'text-gray-500'}`}>
+                                        <div key={idx} className={`p-3 rounded-lg text-sm ${idx === 0 ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/20' : 'bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/30'}`}>
+                                            <h3 className={`font-bold text-xs uppercase tracking-wider mb-1 ${idx === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-500'}`}>
                                                 {route.label}
                                             </h3>
-                                            <p className="text-gray-300">{(route.distanceMeters / 1000).toFixed(2)} km · {Math.round(route.durationSeconds / 60)} min</p>
+                                            <p className="text-gray-700 dark:text-gray-300">{(route.distanceMeters / 1000).toFixed(2)} km · {Math.round(route.durationSeconds / 60)} min</p>
                                         </div>
                                     ))}
                                 </div>
@@ -600,18 +631,18 @@ export function RouteSelector() {
 
                         {/* Tile Stats */}
                         {stats.total > 0 && (
-                            <div className="bg-gray-800 p-4 rounded-xl border border-gray-700/50">
-                                <h2 className="text-sm font-semibold text-yellow-400 uppercase tracking-wider mb-3">Tile Acquisition</h2>
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                                <h2 className="text-sm font-semibold text-amber-700 dark:text-yellow-400 uppercase tracking-wider mb-3">Tile Acquisition</h2>
                                 <div className="space-y-1.5 text-sm">
-                                    <div className="flex justify-between"><span className="text-gray-400">Total Tiles</span><span className="font-mono">{stats.total}</span></div>
-                                    <div className="flex justify-between"><span className="text-green-400">Downloaded</span><span className="font-mono text-green-400">{stats.newlyReady}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Total Tiles</span><span className="font-mono text-gray-900 dark:text-white">{stats.total}</span></div>
+                                    <div className="flex justify-between"><span className="text-green-600 dark:text-green-400">Downloaded</span><span className="font-mono text-green-600 dark:text-green-400">{stats.newlyReady}</span></div>
                                     {stats.stillPending > 0 && (
-                                        <div className="flex justify-between"><span className="text-blue-400 animate-pulse">Pending</span><span className="font-mono text-blue-400">{stats.stillPending}</span></div>
+                                        <div className="flex justify-between"><span className="text-blue-600 dark:text-blue-400 animate-pulse">Pending</span><span className="font-mono text-blue-600 dark:text-blue-400">{stats.stillPending}</span></div>
                                     )}
                                 </div>
 
                                 {/* Progress bar */}
-                                <div className="mt-3 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div className="mt-3 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-full transition-all duration-500"
                                         style={{ width: `${stats.total > 0 ? (stats.newlyReady / stats.total) * 100 : 0}%` }}
@@ -623,7 +654,7 @@ export function RouteSelector() {
                                     <button
                                         onClick={handleAnalyze}
                                         disabled={analyzing}
-                                        className="w-full mt-4 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg border border-purple-400/30 disabled:border-gray-600 transition-all shadow-lg shadow-purple-500/10 disabled:shadow-none"
+                                        className="w-full mt-4 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-700 dark:disabled:to-gray-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg border border-purple-400/30 disabled:border-gray-300 dark:disabled:border-gray-600 transition-all shadow-lg shadow-purple-500/10 disabled:shadow-none"
                                     >
                                         {analyzing ? (
                                             <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
@@ -637,18 +668,18 @@ export function RouteSelector() {
 
                         {/* AI Analysis Results */}
                         {analysisResults && (
-                            <div className="bg-gray-800 p-4 rounded-xl border border-purple-500/30">
-                                <h2 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-purple-300 dark:border-purple-500/30 shadow-sm">
+                                <h2 className="text-sm font-semibold text-purple-700 dark:text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <Zap className="w-4 h-4" /> AI Analysis
                                 </h2>
 
                                 {/* Summary */}
-                                <div className="p-3 bg-purple-900/20 rounded-lg border border-purple-500/20 mb-3">
-                                    <div className="text-2xl font-bold text-white">
+                                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-500/20 mb-3">
+                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
                                         {analysisResults.totalVehicles ?? analysisResults.total_vehicles ?? '—'}
                                     </div>
-                                    <div className="text-xs text-purple-300">Total vehicles detected</div>
-                                    <div className="text-xs text-gray-500 mt-1">
+                                    <div className="text-xs text-purple-700 dark:text-purple-300">Total vehicles detected</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                                         {analysisResults.tilesProcessed ?? analysisResults.tiles_analyzed ?? 0} tiles analyzed
                                     </div>
                                 </div>
@@ -658,18 +689,18 @@ export function RouteSelector() {
                                     <div className="space-y-1.5 max-h-[200px] overflow-y-auto text-xs pr-1">
                                         {(analysisResults.data || analysisResults.results).map((r, i) => {
                                             const count = r.vehicleCount ?? r.vehicle_count ?? 0;
-                                            const densityColor = count > 50 ? 'text-red-400' : count > 20 ? 'text-yellow-400' : 'text-green-400';
+                                            const densityColor = count > 50 ? 'text-red-600 dark:text-red-400' : count > 20 ? 'text-amber-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400';
                                             const barColor = count > 50 ? 'bg-red-500' : count > 20 ? 'bg-yellow-500' : 'bg-green-500';
                                             const barWidth = Math.min((count / 120) * 100, 100);
                                             return (
-                                                <div key={i} className="p-1.5 rounded bg-gray-900/50">
+                                                <div key={i} className="p-1.5 rounded bg-gray-100 dark:bg-gray-900/50">
                                                     <div className="flex justify-between items-center mb-1">
-                                                        <span className="text-gray-400 truncate max-w-[140px]">{r.tileId || `Tile ${i + 1}`}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400 truncate max-w-[140px]">{r.tileId || `Tile ${i + 1}`}</span>
                                                         <span className={`font-mono font-bold ${densityColor}`}>
                                                             {count}
                                                         </span>
                                                     </div>
-                                                    <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                                                    <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                         <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${barWidth}%` }} />
                                                     </div>
                                                 </div>
@@ -684,9 +715,9 @@ export function RouteSelector() {
 
                 {/* ─── Satellite Tile Grid ──────────────────────────── */}
                 {tiles.length > 0 && (
-                    <div className="mt-6 bg-gray-800 p-4 rounded-xl border border-gray-700/50">
-                        <h2 className="text-lg font-semibold mb-1">Satellite Tiles</h2>
-                        <p className="text-xs text-gray-400 mb-4">
+                    <div className="mt-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Satellite Tiles</h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                             {tiles.length} high-resolution Zoom 19 satellite tiles fetched and cached.
                         </p>
                         <div className="flex flex-wrap gap-2">
@@ -696,7 +727,7 @@ export function RouteSelector() {
                                 </div>
                             ))}
                             {Array.from({ length: stats.stillPending }).map((_, i) => (
-                                <div key={`pending-${i}`} className="w-20 h-20 bg-gray-700/50 border border-gray-600 rounded animate-pulse" />
+                                <div key={`pending-${i}`} className="w-20 h-20 bg-gray-200 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded animate-pulse" />
                             ))}
                         </div>
                     </div>
