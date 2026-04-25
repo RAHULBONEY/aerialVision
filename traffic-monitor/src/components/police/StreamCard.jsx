@@ -3,11 +3,11 @@ import { Activity, AlertTriangle, Zap, MapPin, Wifi, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeDensityPercent, computeSpeedFromDensity } from "@/hooks/useLiveStreamMetrics";
 
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8001";
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const getStreamThumbnail = (id, type, streamType, simulationId) => {
     if (streamType === 'SIMULATION' && simulationId) {
-        return `${GATEWAY_URL}/streams/${simulationId}.mp4`;
+        return `${API_URL}/api/streams/${simulationId}.mp4`;
     }
 
     const placeholders = {

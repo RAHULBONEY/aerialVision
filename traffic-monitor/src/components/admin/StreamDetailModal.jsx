@@ -7,8 +7,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useSocket } from "@/hooks/useSocket";
 
-// Gateway URL for simulations (Python Gateway serves video files)
-const GATEWAY_URL = "http://localhost:8001";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function StreamDetailModal({ stream, open, onClose }) {
@@ -41,7 +39,7 @@ export default function StreamDetailModal({ stream, open, onClose }) {
             setAnalysisError(null);
 
             if (stream.type === "SIMULATION") {
-                const videoUrl = `${GATEWAY_URL}/streams/${stream.simulationId}.mp4`;
+                const videoUrl = `${API_URL}/api/streams/${stream.simulationId}.mp4`;
                 setStreamUrl(videoUrl);
             } else {
                 const proxyUrl = `${API_URL}/api/admin/streams/proxy/${stream.engineStreamId}`;
