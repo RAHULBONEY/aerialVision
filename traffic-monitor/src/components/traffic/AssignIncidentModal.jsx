@@ -18,7 +18,6 @@ export default function AssignIncidentModal({
 
     if (!open) return null;
 
-    // Filter to only active/new incidents (not resolved)
     const activeIncidents = incidents?.filter(inc => inc.status !== "RESOLVED") || [];
 
     const handleAssign = async () => {

@@ -3,9 +3,6 @@ const admin = require("firebase-admin");
 
 const COLLECTION = "patrol_units";
 
-/**
- * Create a new patrol unit
- */
 exports.create = async (payload, createdByUid) => {
   const { unitCode, officerName, location, address, status = "AVAILABLE" } = payload;
 
@@ -41,9 +38,6 @@ exports.create = async (payload, createdByUid) => {
   };
 };
 
-/**
- * Get all patrol units
- */
 exports.getAll = async () => {
   const snapshot = await db
     .collection(COLLECTION)
@@ -61,9 +55,6 @@ exports.getAll = async () => {
   });
 };
 
-/**
- * Get a single patrol unit by ID
- */
 exports.getById = async (unitId) => {
   const doc = await db.collection(COLLECTION).doc(unitId).get();
 
@@ -80,9 +71,6 @@ exports.getById = async (unitId) => {
   };
 };
 
-/**
- * Update patrol unit location
- */
 exports.updateLocation = async (unitId, location) => {
   if (!location?.lat || !location?.lng) {
     throw new Error("Invalid location data");
@@ -106,9 +94,6 @@ exports.updateLocation = async (unitId, location) => {
   return exports.getById(unitId);
 };
 
-/**
- * Update patrol unit status
- */
 exports.updateStatus = async (unitId, status) => {
   const validStatuses = ["AVAILABLE", "ON_PATROL", "BUSY"];
 
@@ -131,15 +116,11 @@ exports.updateStatus = async (unitId, status) => {
   return exports.getById(unitId);
 };
 
-/**
- * Dispatch patrol unit to an incident
- */
 exports.dispatchToIncident = async (unitId, incidentId, userId, userName) => {
   const unitRef = db.collection(COLLECTION).doc(unitId);
   const incidentRef = incidentId ? db.collection("incidents").doc(incidentId) : null;
 
   await db.runTransaction(async (transaction) => {
-    // 1. Read operations
     const unitDoc = await transaction.get(unitRef);
     if (!unitDoc.exists) {
       throw new Error("Patrol unit not found");
@@ -155,18 +136,15 @@ exports.dispatchToIncident = async (unitId, incidentId, userId, userName) => {
       }
     }
 
-    // 2. Write operations
     const unitData = unitDoc.data();
     const officerName = unitData.officerName || "Unknown Officer";
 
-    // Update Unit
     transaction.update(unitRef, {
       assignedIncidentId: incidentId || null,
       status: incidentId ? "BUSY" : "AVAILABLE",
       lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Update Incident
     if (incidentRef) {
       const timestamp = new Date().toISOString();
       const actionNote = `Assigned to unit ${unitData.unitCode} (${officerName}) by ${userName || userId}`;
@@ -190,9 +168,6 @@ exports.dispatchToIncident = async (unitId, incidentId, userId, userName) => {
   return exports.getById(unitId);
 };
 
-/**
- * Delete a patrol unit
- */
 exports.remove = async (unitId) => {
   const docRef = db.collection(COLLECTION).doc(unitId);
   const doc = await docRef.get();

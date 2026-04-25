@@ -4,11 +4,6 @@ import PoliceList from '@/components/traffic/PoliceList';
 import ChatWindow from '@/components/traffic/ChatWindow';
 import { useChats, useCreateChat } from '@/hooks/useChats';
 
-/**
- * Emergency Communications page
- * Split layout: Police directory (left) + Chat window (right)
- * Mobile: Full-screen toggle between list and chat
- */
 export default function EmergencyComms() {
     const [selectedOfficer, setSelectedOfficer] = useState(null);
     const [activeChat, setActiveChat] = useState(null);
@@ -17,14 +12,12 @@ export default function EmergencyComms() {
     const { data: chats, isLoading: loadingChats, refetch: refetchChats } = useChats();
     const createChat = useCreateChat();
 
-    // Handle officer selection
     const handleSelectOfficer = async (officer, existingChat) => {
         setSelectedOfficer(officer);
 
         if (existingChat) {
             setActiveChat(existingChat);
         } else {
-            // Create new chat
             try {
                 const chat = await createChat.mutateAsync(officer.uid);
                 setActiveChat(chat);
@@ -33,11 +26,9 @@ export default function EmergencyComms() {
             }
         }
 
-        // Show chat on mobile
         setShowChat(true);
     };
 
-    // Handle back on mobile
     const handleBack = () => {
         setShowChat(false);
     };

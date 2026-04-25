@@ -27,7 +27,6 @@ export default function CreatePatrolUnitModal({ isOpen, onClose, defaultLocation
 
     const createMutation = useCreatePatrolUnit();
 
-    // Initialize Google Places Autocomplete
     useEffect(() => {
         if (!isOpen || !GOOGLE_MAPS_API_KEY) return;
 

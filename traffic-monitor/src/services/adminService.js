@@ -3,7 +3,6 @@
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const AdminService = {
-  // 1. Fetch all registered operators
   getUsers: async () => {
     await delay(1000);
     return [
@@ -14,7 +13,6 @@ export const AdminService = {
     ];
   },
 
-  // 2. Fetch technical system health metrics
   getSystemHealth: async () => {
     await delay(800);
     return {
@@ -27,7 +25,6 @@ export const AdminService = {
     };
   },
 
-  // 3. Security Audit Logs
   getAuditLogs: async () => {
     await delay(600);
     return [

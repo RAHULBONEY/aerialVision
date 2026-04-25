@@ -20,9 +20,6 @@ exports.listIncidents = async (req, res) => {
   }
 };
 
-/**
- * Get single incident by ID
- */
 exports.getIncident = async (req, res) => {
   try {
     const { id } = req.params;
@@ -70,9 +67,6 @@ exports.acknowledgeIncident = async (req, res) => {
   }
 };
 
-/**
- * Resolve an incident
- */
 exports.resolveIncident = async (req, res) => {
   try {
     const { id } = req.params;
@@ -94,9 +88,6 @@ exports.resolveIncident = async (req, res) => {
   }
 };
 
-/**
- * Get incident statistics
- */
 exports.getIncidentStats = async (req, res) => {
   try {
     const stats = await incidentService.getStats();
@@ -126,12 +117,9 @@ exports.startSimulation = async (req, res) => {
       });
     }
 
-    // Get available scenarios (async - fetches from Gateway)
     const scenarios = await brainConsumerService.getSimulationScenarios();
     
-    // Handle case where scenarios is not an array
     if (!Array.isArray(scenarios)) {
-      // If scenarios failed to load, just proceed with the simulation
       console.warn('Could not fetch scenarios list, proceeding anyway');
     }
     
@@ -157,7 +145,6 @@ exports.startSimulation = async (req, res) => {
       name: streamName || scenario.name
     };
 
-    // Fire and forget - analysis runs in background
     brainConsumerService.analyzeSimulation(
       simulationId,
       streamInfo,
@@ -184,9 +171,6 @@ exports.startSimulation = async (req, res) => {
   }
 };
 
-/**
- * Get available simulation scenarios
- */
 exports.getSimulations = async (req, res) => {
   try {
     
@@ -217,7 +201,6 @@ exports.analyzeUpload = async (req, res) => {
 
     const { streamId, streamName, model } = req.body;
     
-    // Probe for recommended model
     const probe = await brainConsumerService.probeStream();
     
     const finalStreamId = streamId || `upload_${Date.now()}`;
@@ -226,7 +209,6 @@ exports.analyzeUpload = async (req, res) => {
       name: streamName || 'Uploaded Video'
     };
 
-    // Start async analysis
     brainConsumerService.analyzeUploadedVideo(
       req.file.buffer,
       streamInfo,

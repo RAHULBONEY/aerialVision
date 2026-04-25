@@ -28,9 +28,6 @@ async function authFetch(url, options = {}) {
   return res.json();
 }
 
-/**
- * Fetch all patrol units
- */
 export function usePatrolUnits(options = {}) {
   return useQuery({
     queryKey: [QUERY_KEY],
@@ -44,9 +41,6 @@ export function usePatrolUnits(options = {}) {
   });
 }
 
-/**
- * Fetch a single patrol unit by ID
- */
 export function usePatrolUnit(unitId, options = {}) {
   return useQuery({
     queryKey: [QUERY_KEY, unitId],
@@ -59,9 +53,6 @@ export function usePatrolUnit(unitId, options = {}) {
   });
 }
 
-/**
- * Create a new patrol unit
- */
 export function useCreatePatrolUnit() {
   const queryClient = useQueryClient();
 
@@ -79,9 +70,6 @@ export function useCreatePatrolUnit() {
   });
 }
 
-/**
- * Update patrol unit location
- */
 export function useUpdateLocation() {
   const queryClient = useQueryClient();
 
@@ -120,9 +108,6 @@ export function useUpdateLocation() {
   });
 }
 
-/**
- * Update patrol unit status
- */
 export function useUpdateStatus() {
   const queryClient = useQueryClient();
 
@@ -161,9 +146,6 @@ export function useUpdateStatus() {
   });
 }
 
-/**
- * Dispatch patrol unit to an incident
- */
 export function useDispatchUnit() {
   const queryClient = useQueryClient();
 
@@ -184,9 +166,6 @@ export function useDispatchUnit() {
   });
 }
 
-/**
- * Delete a patrol unit
- */
 export function useDeletePatrolUnit() {
   const queryClient = useQueryClient();
 

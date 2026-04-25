@@ -7,7 +7,6 @@ import { MapPin, Navigation, Trash2, Loader2, Search, AlertTriangle, Satellite, 
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const MUMBAI_CENTER = { lat: 19.076, lng: 72.8777 };
 
-// ─── Dark Map Styles ──────────────────────────────────────────────────
 const MAP_STYLES = [
     { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
     { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
@@ -28,7 +27,6 @@ const MAP_STYLES = [
     { featureType: "transit", elementType: "labels.text.stroke", stylers: [{ color: "#1d2c4d" }] },
 ];
 
-// ─── Light Map Styles ─────────────────────────────────────────────────
 const LIGHT_MAP_STYLES = [
     { elementType: "geometry", stylers: [{ color: "#f8fafc" }] },
     { elementType: "labels.text.fill", stylers: [{ color: "#475569" }] },
@@ -57,7 +55,6 @@ function createPinSvg(color, label) {
     </svg>`;
 }
 
-// ─── Places Autocomplete Input ────────────────────────────────────────
 function PlacesInput({ placeholder, value, onChange, onPlaceSelect, icon: Icon, iconColor }) {
     const inputRef = useRef(null);
     const autocompleteRef = useRef(null);
@@ -99,12 +96,10 @@ function PlacesInput({ placeholder, value, onChange, onPlaceSelect, icon: Icon, 
     );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────
 export function RouteSelector() {
     const { computeRoutes, pollTileProgress, analyzeRoute, fetchRouteHistory, loading, error, session, routes } = useEmergencyRoutes();
     const { theme } = useTheme();
 
-    // Map state
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const originMarkerRef = useRef(null);
@@ -112,26 +107,21 @@ export function RouteSelector() {
     const routePolylinesRef = useRef([]);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-    // Origin / Destination
     const [origin, setOrigin] = useState(null);
     const [destination, setDestination] = useState(null);
     const [originText, setOriginText] = useState('');
     const [destText, setDestText] = useState('');
-    const [clickMode, setClickMode] = useState('origin'); // 'origin' | 'destination'
+    const [clickMode, setClickMode] = useState('origin');
 
-    // Tiles
     const [tiles, setTiles] = useState([]);
     const [stats, setStats] = useState({ newlyReady: 0, stillPending: 0, total: 0 });
 
-    // AI Analysis
     const [analyzing, setAnalyzing] = useState(false);
     const [analysisResults, setAnalysisResults] = useState(null);
 
-    // History
     const [routeHistory, setRouteHistory] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
 
-    // ── Load Route History ────────────────────────────────────────────
     const loadHistory = useCallback(async () => {
         const history = await fetchRouteHistory();
         setRouteHistory(history);
@@ -143,7 +133,6 @@ export function RouteSelector() {
         }
     }, [showHistory, loadHistory]);
 
-    // ── Load Google Maps Script ───────────────────────────────────────
     useEffect(() => {
         if (window.google?.maps) {
             setIsMapLoaded(true);
@@ -159,7 +148,6 @@ export function RouteSelector() {
         document.head.appendChild(script);
     }, []);
 
-    // ── Initialize Map ────────────────────────────────────────────────
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current || mapInstanceRef.current) return;
 
@@ -181,7 +169,6 @@ export function RouteSelector() {
         mapInstanceRef.current = map;
     }, [isMapLoaded]);
 
-    // ── Update Map Theme Dynamically ──────────────────────────────────
     useEffect(() => {
         if (!mapInstanceRef.current) return;
         mapInstanceRef.current.setOptions({
@@ -189,7 +176,6 @@ export function RouteSelector() {
         });
     }, [theme]);
 
-    // ── Handle Map Click ──────────────────────────────────────────────
     const handleMapClick = useCallback((coord) => {
         if (clickMode === 'origin' || (!origin && !destination)) {
             setOriginPoint(coord);
@@ -200,7 +186,6 @@ export function RouteSelector() {
         }
     }, [clickMode, origin, destination]);
 
-    // ── Marker Helpers ────────────────────────────────────────────────
     const setOriginPoint = useCallback((coord) => {
         setOrigin(coord);
         setOriginText(coord.label || `${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`);
@@ -241,7 +226,6 @@ export function RouteSelector() {
                 animation: window.google.maps.Animation.DROP,
             });
 
-            // Fit bounds to show both markers
             if (originMarkerRef.current) {
                 const bounds = new window.google.maps.LatLngBounds();
                 bounds.extend(originMarkerRef.current.getPosition());
@@ -251,7 +235,6 @@ export function RouteSelector() {
         }
     }, []);
 
-    // ── Clear Everything ──────────────────────────────────────────────
     const handleClear = () => {
         setOrigin(null);
         setDestination(null);
@@ -275,10 +258,8 @@ export function RouteSelector() {
         }
     };
 
-    // ── Load History Item ─────────────────────────────────────────────
     const handleLoadHistoryItem = (item) => {
         handleClear();
-        // The saved components are object with lat/lng/label
         if (item.origin) {
             setOriginPoint(item.origin);
         }
@@ -288,9 +269,7 @@ export function RouteSelector() {
         setShowHistory(false);
     };
 
-    // ── Draw Route Polylines ──────────────────────────────────────────
     const drawRoutes = useCallback((routeData) => {
-        // Clear old polylines
         routePolylinesRef.current.forEach(p => p.setMap(null));
         routePolylinesRef.current = [];
 
@@ -313,7 +292,6 @@ export function RouteSelector() {
         });
     }, [theme]);
 
-    // ── Draw Heatmap Route (replaces blue polyline with colored segments) ──
     const drawHeatmapRoute = useCallback((analysisData) => {
         if (!mapInstanceRef.current || !window.google?.maps?.geometry || !routes.length) return;
 
@@ -323,17 +301,14 @@ export function RouteSelector() {
         const tileResults = analysisData.data || analysisData.results || [];
         if (!tileResults.length) return;
 
-        // Remove old polylines
         routePolylinesRef.current.forEach(p => p.setMap(null));
         routePolylinesRef.current = [];
 
-        // Decode the full route path
         const fullPath = window.google.maps.geometry.encoding.decodePath(primaryRoute.encodedPolyline);
         const totalPoints = fullPath.length;
         const numSegments = tileResults.length;
         const pointsPerSegment = Math.max(2, Math.floor(totalPoints / numSegments));
 
-        // Draw each segment with density-based color
         for (let i = 0; i < numSegments; i++) {
             const startIdx = i * pointsPerSegment;
             const endIdx = Math.min(startIdx + pointsPerSegment + 1, totalPoints);
@@ -343,14 +318,13 @@ export function RouteSelector() {
 
             const count = tileResults[i]?.vehicleCount ?? tileResults[i]?.vehicle_count ?? 0;
 
-            // Color based on density
             let color, opacity;
             if (count > 50) {
-                color = '#ef4444'; opacity = 0.95; // Red — heavy
+                color = '#ef4444'; opacity = 0.95;
             } else if (count > 20) {
-                color = '#f59e0b'; opacity = 0.9;  // Yellow — moderate
+                color = '#f59e0b'; opacity = 0.9;
             } else {
-                color = '#22c55e'; opacity = 0.85; // Green — clear
+                color = '#22c55e'; opacity = 0.85;
             }
 
             const segment = new window.google.maps.Polyline({
@@ -366,7 +340,6 @@ export function RouteSelector() {
         }
     }, [routes, theme]);
 
-    // ── Generate Route ────────────────────────────────────────────────
     const handleGenerate = async () => {
         if (!origin || !destination) return;
 
@@ -388,7 +361,6 @@ export function RouteSelector() {
         }
     };
 
-    // ── Poll for tile progress ────────────────────────────────────────
     useEffect(() => {
         if (!session || stats.stillPending === 0) return;
 
@@ -403,7 +375,6 @@ export function RouteSelector() {
         return () => clearInterval(interval);
     }, [session, stats.stillPending, pollTileProgress]);
 
-    // ── Analyze with AI ───────────────────────────────────────────────
     const handleAnalyze = async () => {
         if (!session || !tiles.length) return;
         setAnalyzing(true);
@@ -415,13 +386,11 @@ export function RouteSelector() {
         setAnalysisResults(result);
         setAnalyzing(false);
 
-        // Draw heatmap on the map polyline
         if (result) {
             drawHeatmapRoute(result);
         }
     };
 
-    // ── RENDER ────────────────────────────────────────────────────────
     if (!GOOGLE_MAPS_KEY) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -436,7 +405,6 @@ export function RouteSelector() {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
-            {/* ─── Header ──────────────────────────────────────────── */}
             <div className="border-b border-gray-200 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm sticky top-0 z-20 px-6 py-4 shadow-sm dark:shadow-none">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -449,9 +417,7 @@ export function RouteSelector() {
                         </div>
                     </div>
 
-                    {/* Controls */}
                     <div className="flex items-center gap-3">
-                        {/* Status pill */}
                         <div className="flex items-center gap-2 mr-2">
                             {origin && !destination && (
                                 <span className="text-xs bg-amber-50 dark:bg-yellow-500/10 text-amber-700 dark:text-yellow-400 border border-amber-200 dark:border-yellow-500/20 px-3 py-1.5 rounded-full animate-pulse">
@@ -465,7 +431,6 @@ export function RouteSelector() {
                             )}
                         </div>
 
-                        {/* History Toggle */}
                         <button
                             onClick={() => setShowHistory(!showHistory)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm font-medium ${showHistory ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/50 text-indigo-700 dark:text-indigo-400' : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
@@ -478,7 +443,6 @@ export function RouteSelector() {
             </div>
 
             <div className="p-6">
-                {/* ─── Search Inputs + Action Buttons ───────────────── */}
                 <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-3 mb-4">
                     <PlacesInput
                         placeholder="Search origin location..."
@@ -521,10 +485,8 @@ export function RouteSelector() {
                     </div>
                 )}
 
-                {/* ─── Map + Results Grid ───────────────────────────── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                    {/* Google Map */}
                     <div className="lg:col-span-2 relative rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700/50 bg-gray-100 dark:bg-gray-800 shadow-sm" style={{ minHeight: '500px' }}>
                         <div ref={mapRef} className="absolute inset-0" />
 
@@ -534,7 +496,6 @@ export function RouteSelector() {
                             </div>
                         )}
 
-                        {/* History Overlay Panel */}
                         {showHistory && (
                             <div className="absolute top-4 right-4 w-80 max-h-[calc(100%-32px)] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-600 shadow-2xl overflow-hidden flex flex-col z-10 transition-all">
                                 <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex justify-between items-center">
@@ -594,9 +555,7 @@ export function RouteSelector() {
                         )}
                     </div>
 
-                    {/* Results Panel */}
                     <div className="space-y-4">
-                        {/* Selected Points */}
                         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
                             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">Selected Points</h2>
 
@@ -612,7 +571,6 @@ export function RouteSelector() {
                             </div>
                         </div>
 
-                        {/* Route Metrics */}
                         {session && routes.length > 0 && (
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
                                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">Route Details</h2>
@@ -629,7 +587,6 @@ export function RouteSelector() {
                             </div>
                         )}
 
-                        {/* Tile Stats */}
                         {stats.total > 0 && (
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
                                 <h2 className="text-sm font-semibold text-amber-700 dark:text-yellow-400 uppercase tracking-wider mb-3">Tile Acquisition</h2>
@@ -641,7 +598,6 @@ export function RouteSelector() {
                                     )}
                                 </div>
 
-                                {/* Progress bar */}
                                 <div className="mt-3 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-full transition-all duration-500"
@@ -649,7 +605,6 @@ export function RouteSelector() {
                                     />
                                 </div>
 
-                                {/* Analyze Button - appears when tiles are 100% downloaded */}
                                 {stats.stillPending === 0 && stats.total > 0 && (
                                     <button
                                         onClick={handleAnalyze}
@@ -666,14 +621,12 @@ export function RouteSelector() {
                             </div>
                         )}
 
-                        {/* AI Analysis Results */}
                         {analysisResults && (
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-purple-300 dark:border-purple-500/30 shadow-sm">
                                 <h2 className="text-sm font-semibold text-purple-700 dark:text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <Zap className="w-4 h-4" /> AI Analysis
                                 </h2>
 
-                                {/* Summary */}
                                 <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-500/20 mb-3">
                                     <div className="text-2xl font-bold text-gray-900 dark:text-white">
                                         {analysisResults.totalVehicles ?? analysisResults.total_vehicles ?? '—'}
@@ -684,7 +637,6 @@ export function RouteSelector() {
                                     </div>
                                 </div>
 
-                                {/* Per-tile results with density colors */}
                                 {(analysisResults.data || analysisResults.results) && (
                                     <div className="space-y-1.5 max-h-[200px] overflow-y-auto text-xs pr-1">
                                         {(analysisResults.data || analysisResults.results).map((r, i) => {
@@ -713,7 +665,6 @@ export function RouteSelector() {
                     </div>
                 </div>
 
-                {/* ─── Satellite Tile Grid ──────────────────────────── */}
                 {tiles.length > 0 && (
                     <div className="mt-6 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Satellite Tiles</h2>
