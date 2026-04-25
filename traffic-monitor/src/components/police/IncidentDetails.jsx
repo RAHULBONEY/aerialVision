@@ -115,6 +115,15 @@ export default function IncidentDetails({ incident }) {
                             </div>
                         </div>
                     </div>
+                    {incident.snapshot?.image?.data && (
+                        <div className="mt-3">
+                            <img
+                                src={incident.snapshot.image.data}
+                                alt="Incident snapshot"
+                                className="w-full rounded-lg border border-gray-200 dark:border-slate-700"
+                            />
+                        </div>
+                    )}
                 </div>
             )}
 

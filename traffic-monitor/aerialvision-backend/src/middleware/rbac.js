@@ -4,7 +4,7 @@ const { logger } = require('../utils/logger');
 /**
  * Role-Based Access Control middleware
  * @param {Array} allowedRoles - Array of roles that can access this route
- * @param {Number} minimumAccessLevel - Minimum access level required (optional)
+ * @param {Number} minimumAccessLevel - Minimum access level required 
  */
 const requireRole = (allowedRoles = [], minimumAccessLevel = 0) => {
   return (req, res, next) => {
@@ -43,11 +43,9 @@ const requireRole = (allowedRoles = [], minimumAccessLevel = 0) => {
   };
 };
 
-/**
- * Predefined role combinations for common access patterns
- */
+
 const ROLES = {
-  ADMIN_ONLY: ['ADMIN', 'admin'],
+  ADMIN_ONLY: ['ADMIN', 'admin', 'TRAFFIC_POLICE'],
   POLICE_AND_ADMIN: ['TRAFFIC_POLICE', 'ADMIN', 'admin'],
   MEDICAL_AND_ADMIN: ['EMERGENCY', 'ADMIN', 'admin'],
   ALL_AUTHENTICATED: ['ADMIN', 'admin', 'TRAFFIC_POLICE', 'EMERGENCY'],

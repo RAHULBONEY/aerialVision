@@ -16,7 +16,8 @@ import {
     Sun,
     User,
     LogOut,
-    Home
+    Home,
+    Bot
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeProvider";
@@ -31,6 +32,7 @@ const navItems = [
     { label: "Audit Logs", path: "/admin/audit-logs", icon: FileText },
     { label: "Login History", path: "/admin/login-history", icon: LogIn },
     { label: "Metrics", path: "/admin/metrics", icon: BarChart },
+    { label: "Copilot", path: "/admin/copilot", icon: Bot },
 ];
 
 export default function AdminSidebar() {
@@ -84,7 +86,7 @@ export default function AdminSidebar() {
                 </div>
             </div>
 
-            <nav className="flex-1 p-4 overflow-y-auto">
+            <nav className="flex-1 p-4 overflow-y-auto sidebar-scroll">
                 <div className="space-y-1">
                     {navItems.map((item) => {
                         const Icon = item.icon;

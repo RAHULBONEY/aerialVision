@@ -11,7 +11,8 @@ import {
     User,
     LogOut,
     Heart,
-    Activity
+    Activity,
+    Bot
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeProvider";
@@ -22,6 +23,7 @@ const navItems = [
     { label: "Emergency Routing", path: "/emergency/routing", icon: Activity },
     { label: "Live Streams", path: "/emergency/streams", icon: Video },
     { label: "Incidents", path: "/emergency/incidents", icon: AlertTriangle },
+    { label: "Copilot", path: "/emergency/copilot", icon: Bot },
 ];
 
 export default function EmergencySidebar() {
@@ -75,7 +77,7 @@ export default function EmergencySidebar() {
                                 AERIAL<span className="text-rose-400">VISION</span>
                             </h1>
                             <p className="text-[10px] font-mono uppercase tracking-widest text-rose-600/80">
-                                Emergency Ops
+                                Ambulance Ops
                             </p>
                         </div>
                     )}
@@ -83,7 +85,7 @@ export default function EmergencySidebar() {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-rose-900/50">
+            <nav className="flex-1 p-4 overflow-y-auto sidebar-scroll">
                 <div className="space-y-1">
                     {navItems.map((item) => {
                         const Icon = item.icon;

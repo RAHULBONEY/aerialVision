@@ -1,25 +1,22 @@
-import React from "react";
-import { Activity, AlertTriangle, MapPin, Wifi, Eye } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Activity, AlertTriangle, MapPin, Wifi, WifiOff, Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { computeDensityPercent, computeSpeedFromDensity } from "@/hooks/useLiveStreamMetrics";
 
-const getStreamThumbnail = (id, type) => {
-    const placeholders = {
-        aerial: [
-            "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?q=80&w=800&auto=format&fit=crop",
-            "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=800&auto=format&fit=crop",
-        ],
-        ground: [
-            "https://images.unsplash.com/photo-1545459720-aacaf509ebc3?q=80&w=800&auto=format&fit=crop",
-            "https://images.unsplash.com/photo-1494522855154-9297ac14b55f?q=80&w=800&auto=format&fit=crop",
-        ]
-    };
-
-    const collection = type === 'aerial' ? placeholders.aerial : placeholders.ground;
-    const index = id?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % collection.length || 0;
-    return collection[index];
-};
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8001";
 
 export default function EmergencyStreamCard({ stream, onClick }) {
+    const videoRef = useRef(null);
+    const [isHovered, setIsHovered] = useState(false);
+    const [videoLoaded, setVideoLoaded] = useState(false);
+    const [videoError, setVideoError] = useState(false);
+
+    const isSimulation = stream.type === "SIMULATION";
+
+    const videoUrl = isSimulation
+        ? `${GATEWAY_URL}/streams/${encodeURIComponent(stream.simulationId)}.mp4`
+        : `${GATEWAY_URL}/streams/${stream.id}`;
+
     const statusConfig = {
         NORMAL: {
             border: "border-emerald-200 dark:border-emerald-500/30",
@@ -46,12 +43,30 @@ export default function EmergencyStreamCard({ stream, onClick }) {
 
     const status = statusConfig[stream.currentStatus] || statusConfig.NORMAL;
     const StatusIcon = status.icon;
-    const density = stream.metrics?.density || 0;
-    const speed = stream.metrics?.speed || 0;
+    // Use live computed density & speed if available, else fallback
+    const densityPercent = stream.metrics?.densityPercent ?? computeDensityPercent(stream.metrics?.count);
+    const density = densityPercent / 100;
+    const speed = stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent);
+
+    const handleMouseEnter = () => {
+        setIsHovered(true);
+        if (isSimulation && videoRef.current) {
+            videoRef.current.play().catch(() => {});
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setIsHovered(false);
+        if (isSimulation && videoRef.current) {
+            videoRef.current.pause();
+        }
+    };
 
     return (
         <div
             onClick={onClick}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             className={cn(
                 "group relative overflow-hidden rounded-xl bg-white dark:bg-[#0a0a12] border-2 shadow-sm dark:shadow-none transition-all duration-300 cursor-pointer hover:shadow-lg dark:hover:shadow-rose-900/10",
                 status.border
@@ -60,9 +75,9 @@ export default function EmergencyStreamCard({ stream, onClick }) {
             {/* Header */}
             <div className="p-4">
                 <div className="flex items-start justify-between mb-3">
-                    <div>
+                    <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <MapPin size={14} className="text-gray-500 dark:text-slate-400" />
+                            <MapPin size={14} className="text-gray-500 dark:text-slate-400 shrink-0" />
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
                                 {stream.name}
                             </h3>
@@ -83,7 +98,7 @@ export default function EmergencyStreamCard({ stream, onClick }) {
                     </div>
 
                     <div className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium",
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium shrink-0",
                         status.badge
                     )}>
                         <StatusIcon size={12} />
@@ -91,29 +106,82 @@ export default function EmergencyStreamCard({ stream, onClick }) {
                     </div>
                 </div>
 
-                {/* Thumbnail */}
-                <div className="relative aspect-video rounded-lg overflow-hidden mb-4 border border-gray-200 dark:border-slate-800/50 bg-gray-100 dark:bg-black">
-                    <img
-                        src={getStreamThumbnail(stream.id, stream.viewType)}
-                        alt={`Feed from ${stream.name}`}
-                        className="w-full h-full object-cover opacity-90 dark:opacity-70 group-hover:opacity-100 transition-opacity duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-white/20 dark:from-black/80 via-transparent to-transparent"></div>
+                {/* Video / Thumbnail Area */}
+                <div className="relative aspect-video rounded-lg overflow-hidden mb-4 border border-gray-200 dark:border-slate-800/50 bg-gray-900">
+                    {isSimulation ? (
+                        <>
+                            <video
+                                ref={videoRef}
+                                src={videoUrl}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                className="w-full h-full object-cover"
+                                onLoadedData={() => setVideoLoaded(true)}
+                                onError={() => setVideoError(true)}
+                            />
+                            {/* Play overlay */}
+                            <div className={cn(
+                                "absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity duration-200",
+                                isHovered ? "opacity-0" : "opacity-100"
+                            )}>
+                                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                    <Play className="w-5 h-5 text-white ml-0.5" />
+                                </div>
+                            </div>
+                            {/* Pause indicator on hover */}
+                            <div className={cn(
+                                "absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200",
+                                isHovered ? "opacity-100" : "opacity-0"
+                            )}>
+                                <Pause className="w-6 h-6 text-white" />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <img
+                                src={videoUrl}
+                                alt={`Live feed from ${stream.name}`}
+                                className="w-full h-full object-cover"
+                                onLoad={() => setVideoLoaded(true)}
+                                onError={() => setVideoError(true)}
+                            />
+                            {/* Live Indicator for real streams */}
+                            <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
+                                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs text-white font-mono">LIVE</span>
+                            </div>
+                        </>
+                    )}
 
-                    {/* Live Indicator */}
-                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
-                        <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-white font-mono">LIVE</span>
-                    </div>
+                    {/* Simulation live badge */}
+                    {isSimulation && videoLoaded && !videoError && (
+                        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
+                            <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs text-white font-mono">SIM</span>
+                        </div>
+                    )}
 
-                    {/* View Button */}
-                    <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-rose-500/90 backdrop-blur-sm px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Eye size={12} className="text-white" />
-                        <span className="text-xs text-white font-medium">View</span>
-                    </div>
+                    {/* Error / Loading states */}
+                    {!videoLoaded && !videoError && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                            <div className="text-center">
+                                <div className="w-8 h-8 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-2" />
+                                <p className="text-gray-400 text-xs">Loading…</p>
+                            </div>
+                        </div>
+                    )}
+                    {videoError && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                            <div className="text-center">
+                                <WifiOff className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                                <p className="text-gray-400 text-xs">Stream Offline</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Read-Only Metrics */}
+                {/* Metrics */}
                 <div className="grid grid-cols-2 gap-4 mb-3">
                     <div className="text-center">
                         <div className="text-gray-600 dark:text-slate-400 text-xs uppercase tracking-wider mb-1">
@@ -148,12 +216,21 @@ export default function EmergencyStreamCard({ stream, onClick }) {
                     </div>
                 </div>
 
-                {/* Connection Status */}
+                {/* Footer */}
                 <div className="pt-3 border-t border-gray-200 dark:border-slate-800/50">
                     <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-500">
                         <div className="flex items-center gap-1.5">
-                            <Wifi size={12} />
-                            <span>Connected</span>
+                            {videoError ? (
+                                <>
+                                    <WifiOff size={12} className="text-red-400" />
+                                    <span className="text-red-400">Offline</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Wifi size={12} />
+                                    <span>Connected</span>
+                                </>
+                            )}
                         </div>
                         <div className="font-mono">Read-Only</div>
                     </div>

@@ -1,18 +1,41 @@
-/**
- * Incident Service - Manages incident CRUD operations in Firestore
- * Schema matches the exact structure required by the system
- */
 const { db } = require('../config/firebase');
 const admin = require('firebase-admin');
+const ragService = require('./rag.service');
 
 const COLLECTION = 'incidents';
 
-/**
- * Create a new incident from Brain detection
- * @param {object} payload - Incident data from Brain
- * @param {object} streamInfo - Stream metadata (id, name)
- * @returns {object} Created incident with Firestore ID
- */
+exports.buildRagContent = buildRagContent;
+
+function buildRagContent(data) {
+  const ts = typeof data.timestamp === 'string' ? data.timestamp : new Date().toISOString();
+
+  let content = `At ${ts}, a ${data.severity || 'UNKNOWN'} ${data.type || 'UNKNOWN'} incident was detected on stream '${data.streamName || 'Unknown'}' (ID: ${data.streamId || 'unknown'}). `;
+  content += `Description: ${data.description || 'No description'}. `;
+  content += `Traffic density: ${data.density ?? 'N/A'}, Vehicle count: ${data.vehicleCount ?? 'N/A'}, Average speed: ${data.speed ?? 'N/A'} km/h. `;
+  content += `Status: ${data.status || 'NEW'}. `;
+
+  if (data.ackedBy) {
+    const ackedAtStr = data.ackedAt
+      ? (typeof data.ackedAt === 'string' ? data.ackedAt : data.ackedAt.toDate?.()?.toISOString?.() || 'unknown time')
+      : 'unknown time';
+    content += `Acknowledged by ${data.ackedBy} at ${ackedAtStr}. `;
+  }
+  if (data.note) {
+    content += `Note: "${data.note}". `;
+  }
+  if (data.operatorAction && data.operatorAction.ackedBy) {
+    content += `Operator action taken by ${data.operatorAction.ackedBy}. `;
+  }
+  if (data.resolution) {
+    content += `Resolution: ${data.resolution}. `;
+  }
+  if (!data.ackedBy && data.status === 'NEW') {
+    content += `No operator assigned yet.`;
+  }
+
+  return content.trim();
+}
+
 exports.createFromBrain = async (payload, streamInfo) => {
   const {
     type,
@@ -23,7 +46,6 @@ exports.createFromBrain = async (payload, streamInfo) => {
     speed = 0,
   } = payload;
 
-  // Determine severity based on incident type
   const severity = determineSeverity(type, payload);
 
   const incident = {
@@ -38,7 +60,7 @@ exports.createFromBrain = async (payload, streamInfo) => {
       density: density,
       speed: speed,
       vehicleCount: vehicleCount,
-      image: snapshot // Base64 image if provided
+      image: snapshot
     } : {
       density,
       speed,
@@ -51,6 +73,29 @@ exports.createFromBrain = async (payload, streamInfo) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   };
 
+  const ragContent = buildRagContent({
+    timestamp: new Date().toISOString(),
+    severity,
+    type: type || 'UNKNOWN',
+    streamName: streamInfo.name,
+    streamId: streamInfo.id,
+    description: description || `${type} detected on ${streamInfo.name}`,
+    density,
+    vehicleCount,
+    speed,
+    status: 'NEW'
+  });
+
+  incident.ragContent = ragContent;
+
+  try {
+    const embeddingArray = await ragService.getEmbedding(ragContent);
+    incident.embedding = admin.firestore.FieldValue.vector(embeddingArray);
+  } catch (err) {
+    console.error('RAG embedding failed for incident:', err.message);
+    incident.ragStatus = 'EMBEDDING_FAILED';
+  }
+
   const docRef = await db.collection(COLLECTION).add(incident);
   
   return {
@@ -61,11 +106,6 @@ exports.createFromBrain = async (payload, streamInfo) => {
   };
 };
 
-/**
- * List incidents with optional filters
- * @param {object} filters - Optional filters (status, type, streamId, limit)
- * @returns {array} List of incidents
- */
 exports.list = async (filters = {}) => {
   let query = db.collection(COLLECTION);
 
@@ -86,7 +126,7 @@ exports.list = async (filters = {}) => {
   if (filters.limit) {
     query = query.limit(parseInt(filters.limit));
   } else {
-    query = query.limit(50); // Default limit
+    query = query.limit(50);
   }
 
   const snapshot = await query.get();
@@ -103,11 +143,6 @@ exports.list = async (filters = {}) => {
   });
 };
 
-/**
- * Get a single incident by ID
- * @param {string} id - Incident ID
- * @returns {object} Incident data
- */
 exports.getById = async (id) => {
   const doc = await db.collection(COLLECTION).doc(id).get();
 
@@ -125,14 +160,6 @@ exports.getById = async (id) => {
   };
 };
 
-/**
- * Acknowledge an incident
- * @param {string} id - Incident ID
- * @param {string} userId - Operator user ID
- * @param {string} note - Optional note
- * @param {string} userName - Operator name
- * @returns {object} Updated incident
- */
 exports.acknowledge = async (id, userId, note = null, userName = null) => {
   const docRef = db.collection(COLLECTION).doc(id);
   const doc = await docRef.get();
@@ -141,31 +168,56 @@ exports.acknowledge = async (id, userId, note = null, userName = null) => {
     throw new Error('Incident not found');
   }
 
-  if (doc.data().status !== 'NEW') {
+  const existing = doc.data();
+  if (existing.status !== 'NEW') {
     throw new Error('Incident already acknowledged');
   }
 
-  await docRef.update({
+  const ackedByName = userName || userId;
+  const ackedNote = note || 'Acknowledged via Dashboard';
+
+  const newRagContent = buildRagContent({
+    timestamp: existing.timestamp?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+    severity: existing.severity,
+    type: existing.type,
+    streamName: existing.streamName,
+    streamId: existing.streamId,
+    description: existing.description,
+    density: existing.snapshot?.density,
+    vehicleCount: existing.snapshot?.vehicleCount,
+    speed: existing.snapshot?.speed,
     status: 'ACKNOWLEDGED',
-    ackedBy: userName || userId,
-    ackedAt: admin.firestore.FieldValue.serverTimestamp(),
-    note: note || 'Acknowledged via Dashboard',
-    operatorAction: {
-      ackedBy: userName || userId,
-      ackedAt: new Date().toISOString(),
-      note: note || 'Acknowledged via Dashboard'
-    }
+    ackedBy: ackedByName,
+    ackedAt: new Date().toISOString(),
+    note: ackedNote,
+    operatorAction: { ackedBy: ackedByName }
   });
+
+  const updateFields = {
+    status: 'ACKNOWLEDGED',
+    ackedBy: ackedByName,
+    ackedAt: admin.firestore.FieldValue.serverTimestamp(),
+    note: ackedNote,
+    ragContent: newRagContent,
+    operatorAction: {
+      ackedBy: ackedByName,
+      ackedAt: new Date().toISOString(),
+      note: ackedNote
+    }
+  };
+
+  try {
+    const embeddingArray = await ragService.getEmbedding(newRagContent);
+    updateFields.embedding = admin.firestore.FieldValue.vector(embeddingArray);
+  } catch (err) {
+    console.error('RAG re-embedding failed on acknowledge:', err.message);
+  }
+
+  await docRef.update(updateFields);
 
   return exports.getById(id);
 };
 
-/**
- * Resolve an incident
- * @param {string} id - Incident ID
- * @param {string} resolution - Resolution details
- * @returns {object} Updated incident
- */
 exports.resolve = async (id, resolution) => {
   const docRef = db.collection(COLLECTION).doc(id);
   const doc = await docRef.get();
@@ -174,19 +226,44 @@ exports.resolve = async (id, resolution) => {
     throw new Error('Incident not found');
   }
 
-  await docRef.update({
+  const existing = doc.data();
+
+  const newRagContent = buildRagContent({
+    timestamp: existing.timestamp?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+    severity: existing.severity,
+    type: existing.type,
+    streamName: existing.streamName,
+    streamId: existing.streamId,
+    description: existing.description,
+    density: existing.snapshot?.density,
+    vehicleCount: existing.snapshot?.vehicleCount,
+    speed: existing.snapshot?.speed,
+    status: 'RESOLVED',
+    ackedBy: existing.ackedBy,
+    ackedAt: existing.ackedAt,
+    note: existing.note,
+    resolution: resolution
+  });
+
+  const updateFields = {
     status: 'RESOLVED',
     resolution,
-    resolvedAt: admin.firestore.FieldValue.serverTimestamp()
-  });
+    resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    ragContent: newRagContent
+  };
+
+  try {
+    const embeddingArray = await ragService.getEmbedding(newRagContent);
+    updateFields.embedding = admin.firestore.FieldValue.vector(embeddingArray);
+  } catch (err) {
+    console.error('RAG re-embedding failed on resolve:', err.message);
+  }
+
+  await docRef.update(updateFields);
 
   return exports.getById(id);
 };
 
-/**
- * Get incident statistics
- * @returns {object} Stats summary
- */
 exports.getStats = async () => {
   const snapshot = await db.collection(COLLECTION).get();
   
@@ -214,16 +291,10 @@ exports.getStats = async () => {
   return stats;
 };
 
-/**
- * Determine severity based on incident type and data
- * @param {string} type - Incident type
- * @param {object} data - Additional data
- * @returns {string} Severity level
- */
 function determineSeverity(type, data = {}) {
   switch (type) {
     case 'GREEN_WAVE':
-      return 'CRITICAL'; // Ambulance = always critical
+      return 'CRITICAL';
     case 'CONGESTION':
       if (data.vehicleCount > 25) return 'CRITICAL';
       if (data.vehicleCount > 20) return 'HIGH';

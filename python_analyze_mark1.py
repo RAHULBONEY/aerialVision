@@ -17,7 +17,7 @@ def get_model_info(model_path='best_v1_daytime.pt'):
     print("=" * 70)
     
     # File metadata
-    print("\n📁 FILE METADATA")
+    print("\nFILE METADATA")
     print("-" * 50)
     if os.path.exists(model_path):
         file_stats = os.stat(model_path)
@@ -26,11 +26,11 @@ def get_model_info(model_path='best_v1_daytime.pt'):
         print(f"Created: {datetime.fromtimestamp(file_stats.st_ctime).strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Modified: {datetime.fromtimestamp(file_stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}")
     else:
-        print(f"❌ File {model_path} not found!")
+        print(f"File {model_path} not found!")
         return
     
     # Load raw checkpoint to inspect internals
-    print("\n🔍 CHECKPOINT INSPECTION")
+    print("\nCHECKPOINT INSPECTION")
     print("-" * 50)
     try:
         checkpoint = torch.load(model_path, map_location='cpu')
@@ -38,13 +38,12 @@ def get_model_info(model_path='best_v1_daytime.pt'):
         
         # Check for training arguments
         if 'train_args' in checkpoint:
-            print(f"\n📝 Training Arguments found:")
+            print(f"\nTraining Arguments found:")
             for key, value in checkpoint['train_args'].items():
                 print(f"  {key}: {value}")
         
-        # Check for date
         if 'date' in checkpoint:
-            print(f"\n📅 Training Date: {checkpoint['date']}")
+            print(f"\nTraining Date: {checkpoint['date']}")
             
         # Check for version
         if 'version' in checkpoint:
@@ -53,7 +52,7 @@ def get_model_info(model_path='best_v1_daytime.pt'):
         # Check for model metadata
         if 'model' in checkpoint and hasattr(checkpoint['model'], 'args'):
             model_args = checkpoint['model'].args
-            print(f"\n🏗️  MODEL ARCHITECTURE ARGUMENTS")
+            print(f"\nMODEL ARCHITECTURE ARGUMENTS")
             print(f"  Task: {model_args.task}")
             print(f"  Mode: {model_args.mode}")
             print(f"  Model scale: {model_args.model}")
@@ -64,7 +63,7 @@ def get_model_info(model_path='best_v1_daytime.pt'):
         print(f"Could not inspect raw checkpoint: {e}")
     
     # Load via Ultralytics API for detailed info
-    print("\n🧠 MODEL ARCHITECTURE ANALYSIS")
+    print("\nMODEL ARCHITECTURE ANALYSIS")
     print("-" * 50)
     try:
         model = YOLO(model_path)
@@ -74,15 +73,13 @@ def get_model_info(model_path='best_v1_daytime.pt'):
         print(f"Model task: {model.task}")
         print(f"Model type: {model.type}")
         
-        # Try to get names
         if hasattr(model, 'names'):
             names = model.names
-            print(f"\n📋 CLASSES ({len(names)} total):")
+            print(f"\nCLASSES ({len(names)} total):")
             for idx, name in names.items():
                 print(f"  {idx}: {name}")
         
-        # Extract training metadata if available
-        print("\n📊 TRAINING METADATA")
+        print("\nTRAINING METADATA")
         print("-" * 50)
         
         # Try to access trainer attributes or ckpt
@@ -101,7 +98,7 @@ def get_model_info(model_path='best_v1_daytime.pt'):
                 print(f"Data configuration: {args.get('data', 'Unknown')}")
                 
                 # Augmentation parameters
-                print(f"\n🎨 AUGMENTATION PARAMETERS:")
+                print(f"\nAUGMENTATION PARAMETERS:")
                 print(f"  Mosaic: {args.get('mosaic', 'Unknown')}")
                 print(f"  Degrees: {args.get('degrees', 'Unknown')}")
                 print(f"  Translate: {args.get('translate', 'Unknown')}")
@@ -110,9 +107,8 @@ def get_model_info(model_path='best_v1_daytime.pt'):
                 print(f"  HSV-S: {args.get('hsv_s', 'Unknown')}")
                 print(f"  HSV-V: {args.get('hsv_v', 'Unknown')}")
                 
-            # Check for metrics
             if 'metrics' in ckpt and ckpt['metrics']:
-                print(f"\n📈 FINAL METRICS:")
+                print(f"\nFINAL METRICS:")
                 metrics = ckpt['metrics']
                 for key, value in metrics.items():
                     if isinstance(value, (int, float)):
@@ -120,15 +116,13 @@ def get_model_info(model_path='best_v1_daytime.pt'):
                     else:
                         print(f"  {key}: {value}")
             
-            # Check for epoch number
             if 'epoch' in ckpt:
-                print(f"\n⏱️  Completed Epochs: {ckpt['epoch']}")
+                print(f"\nCompleted Epochs: {ckpt['epoch']}")
                 
             # Check for best fitness
             if 'best_fitness' in ckpt:
                 print(f"Best Fitness: {ckpt['best_fitness']}")
                 
-            # Check for dataset info
             if 'train_metrics' in ckpt:
                 print(f"Training metrics available: {ckpt['train_metrics']}")
                 
@@ -138,7 +132,7 @@ def get_model_info(model_path='best_v1_daytime.pt'):
         traceback.print_exc()
     
     # Try to find and parse data.yaml for dataset info
-    print("\n🗂️  DATASET INFORMATION (from data.yaml)")
+    print("\nDATASET INFORMATION (from data.yaml)")
     print("-" * 50)
     data_yaml_path = 'datasets/traffic_data/data.yaml'
     
@@ -195,7 +189,7 @@ def get_model_info(model_path='best_v1_daytime.pt'):
         print(f"Error parsing data.yaml: {e}")
     
     # Model architecture details
-    print("\n🏗️  PARAMETRIC DETAILS")
+    print("\nPARAMETRIC DETAILS")
     print("-" * 50)
     try:
         model = YOLO(model_path)

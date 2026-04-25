@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, onSnapshot } from "firebase/firestore";
-import { useEffect } from "react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { useEffect, useMemo } from "react";
+import { useLiveStreamMetrics, computeDensityPercent, computeSpeedFromDensity } from "./useLiveStreamMetrics";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -28,13 +29,19 @@ export function useEmergencyStreams() {
 
     // Real-time Firestore sync
     useEffect(() => {
-        const q = query(collection(db, "streams"));
+        const q = query(
+            collection(db, "streams"),
+            where("status", "==", "active")
+        );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const liveStreams = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
+            const liveStreams = snapshot.docs
+                .map((doc) => ({ id: doc.id, ...doc.data() }))
+                .filter((s) =>
+                    !s.assignedRoles ||
+                    s.assignedRoles.length === 0 ||
+                    s.assignedRoles.includes("EMERGENCY")
+                );
 
             queryClient.setQueryData(["emergency-streams"], liveStreams);
         });
@@ -42,7 +49,35 @@ export function useEmergencyStreams() {
         return () => unsubscribe();
     }, [queryClient]);
 
-    return queryInfo;
+    const streamIds = useMemo(() => queryInfo.data?.map((s) => s.id) || [], [queryInfo.data]);
+    const metricsMap = useLiveStreamMetrics(streamIds);
+
+    // Merge live Socket.io metrics into Firestore stream data
+    const mergedData = useMemo(() => {
+        if (!queryInfo.data) return [];
+        return queryInfo.data.map((stream) => {
+            const live = metricsMap[stream.id];
+            if (!live) return stream;
+
+            const densityPercent = computeDensityPercent(live.count);
+            const speed = computeSpeedFromDensity(densityPercent);
+
+            return {
+                ...stream,
+                metrics: {
+                    ...stream.metrics,
+                    density: densityPercent / 100,          // keep 0–1 for backward compat
+                    densityPercent,
+                    speed,
+                    count: live.count,
+                    status: live.status,
+                    updatedAt: live.timestamp,
+                },
+            };
+        });
+    }, [queryInfo.data, metricsMap]);
+
+    return { ...queryInfo, data: mergedData };
 }
 
 // Get streams that have emergency-related signals

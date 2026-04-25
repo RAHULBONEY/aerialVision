@@ -13,10 +13,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// FPS assumption for frame calculation
 const VIDEO_FPS = 30;
 
-// Status colors
 const STATUS_COLORS = {
     "🟢 FLOW": "bg-green-500",
     "🟡 SLOW": "bg-yellow-500",
@@ -24,10 +22,6 @@ const STATUS_COLORS = {
     "UNKNOWN": "bg-gray-500",
 };
 
-/**
- * Smart Video Player with Canvas Overlay
- * Syncs telemetry data with video playback using requestAnimationFrame
- */
 export default function SmartVideoPlayer({
     videoSrc,
     streamId,
@@ -49,7 +43,6 @@ export default function SmartVideoPlayer({
     const [currentTime, setCurrentTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Animation loop for overlay sync
     const renderLoop = useCallback(() => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -64,23 +57,19 @@ export default function SmartVideoPlayer({
         setCurrentFrame(frame);
         setCurrentTime(video.currentTime);
 
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Get frame data from buffer
         const frameData = getFrameData?.(frame);
 
         if (frameData?.boxes && frameData.boxes.length > 0) {
             drawBoundingBoxes(ctx, frameData.boxes, canvas.width, canvas.height);
         }
 
-        // Draw status overlay
         drawStatusOverlay(ctx, frameData?.stats || stats, canvas.width);
 
         animationRef.current = requestAnimationFrame(renderLoop);
     }, [getFrameData, stats]);
 
-    // Start/stop animation loop
     useEffect(() => {
         animationRef.current = requestAnimationFrame(renderLoop);
 
@@ -91,7 +80,6 @@ export default function SmartVideoPlayer({
         };
     }, [renderLoop]);
 
-    // Resize canvas to match video
     useEffect(() => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -113,7 +101,6 @@ export default function SmartVideoPlayer({
         };
     }, [videoSrc]);
 
-    // Video metadata
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
@@ -126,7 +113,6 @@ export default function SmartVideoPlayer({
         return () => video.removeEventListener("loadedmetadata", handleMetadata);
     }, [videoSrc]);
 
-    // Play/Pause
     const togglePlay = () => {
         const video = videoRef.current;
         if (!video) return;
@@ -140,7 +126,6 @@ export default function SmartVideoPlayer({
         }
     };
 
-    // Mute
     const toggleMute = () => {
         const video = videoRef.current;
         if (!video) return;
@@ -148,7 +133,6 @@ export default function SmartVideoPlayer({
         setIsMuted(video.muted);
     };
 
-    // Fullscreen
     const toggleFullscreen = () => {
         if (!containerRef.current) return;
 
@@ -161,7 +145,6 @@ export default function SmartVideoPlayer({
         }
     };
 
-    // Seek
     const handleSeek = (e) => {
         const video = videoRef.current;
         if (!video || !duration) return;
@@ -186,7 +169,6 @@ export default function SmartVideoPlayer({
                 className
             )}
         >
-            {/* Video Element */}
             <video
                 ref={videoRef}
                 src={videoSrc}
@@ -198,22 +180,18 @@ export default function SmartVideoPlayer({
                 onPause={() => setIsPlaying(false)}
             />
 
-            {/* Canvas Overlay */}
             <canvas
                 ref={canvasRef}
                 className="absolute inset-0 pointer-events-none"
             />
 
-            {/* Green Wave Banner */}
             {greenWaveActive && (
                 <div className="absolute top-0 left-0 right-0 bg-green-500 text-white text-center py-3 font-bold text-lg animate-pulse z-20">
                     🚑 AMBULANCE DETECTED — GREEN WAVE ACTIVE 🚑
                 </div>
             )}
 
-            {/* Top Stats Bar */}
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-                {/* Status Badge */}
                 <div className="flex items-center gap-2">
                     <div className={cn(
                         "px-3 py-1.5 rounded-lg text-white font-bold text-sm flex items-center gap-2",
@@ -231,7 +209,6 @@ export default function SmartVideoPlayer({
                     )}
                 </div>
 
-                {/* Vehicle Count */}
                 <div className="bg-black/70 backdrop-blur px-3 py-1.5 rounded-lg text-white flex items-center gap-2">
                     <Car className="w-4 h-4" />
                     <span className="font-mono font-bold">{stats.count || 0}</span>
@@ -239,14 +216,11 @@ export default function SmartVideoPlayer({
                 </div>
             </div>
 
-            {/* Frame Counter */}
             <div className="absolute top-4 right-4 bg-black/70 backdrop-blur px-2 py-1 rounded text-white font-mono text-xs z-10">
                 Frame: {currentFrame}
             </div>
 
-            {/* Controls */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                {/* Progress Bar */}
                 <div
                     className="w-full h-1 bg-gray-600 rounded-full cursor-pointer mb-3"
                     onClick={handleSeek}
@@ -259,7 +233,6 @@ export default function SmartVideoPlayer({
 
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        {/* Play/Pause */}
                         <button
                             onClick={togglePlay}
                             className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
@@ -271,7 +244,6 @@ export default function SmartVideoPlayer({
                             )}
                         </button>
 
-                        {/* Mute */}
                         <button
                             onClick={toggleMute}
                             className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -283,14 +255,12 @@ export default function SmartVideoPlayer({
                             )}
                         </button>
 
-                        {/* Time */}
                         <span className="text-white text-sm font-mono">
                             {formatTime(currentTime)} / {formatTime(duration)}
                         </span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {/* Connection Status */}
                         <div className={cn(
                             "flex items-center gap-1.5 px-2 py-1 rounded text-xs",
                             streamStatus === "COMPLETED" ? "bg-green-500/20 text-green-400" :
@@ -301,7 +271,6 @@ export default function SmartVideoPlayer({
                             {streamStatus}
                         </div>
 
-                        {/* Fullscreen */}
                         <button
                             onClick={toggleFullscreen}
                             className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -315,34 +284,27 @@ export default function SmartVideoPlayer({
     );
 }
 
-/**
- * Draw bounding boxes on canvas
- */
 function drawBoundingBoxes(ctx, boxes, width, height) {
     boxes.forEach((box) => {
         const [x1, y1, x2, y2] = box.coords || box;
         const label = box.label || box.class || "";
         const confidence = box.confidence || box.conf || 0;
 
-        // Determine color based on vehicle type
         const color = label.toLowerCase().includes("ambulance")
-            ? "#22c55e" // Green for ambulance
+            ? "#22c55e"
             : label.toLowerCase().includes("truck")
-                ? "#f59e0b" // Amber for trucks
-                : "#3b82f6"; // Blue for others
+                ? "#f59e0b"
+                : "#3b82f6";
 
-        // Scale coordinates to canvas size
         const sx1 = x1 * width;
         const sy1 = y1 * height;
         const sx2 = x2 * width;
         const sy2 = y2 * height;
 
-        // Draw box
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.strokeRect(sx1, sy1, sx2 - sx1, sy2 - sy1);
 
-        // Draw label background
         if (label) {
             const labelText = `${label} ${(confidence * 100).toFixed(0)}%`;
             ctx.font = "12px monospace";
@@ -357,17 +319,12 @@ function drawBoundingBoxes(ctx, boxes, width, height) {
     });
 }
 
-/**
- * Draw status overlay on canvas
- */
 function drawStatusOverlay(ctx, stats, width) {
     if (!stats || !stats.count) return;
 
-    // Draw semi-transparent background
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(width - 120, 50, 110, 60);
 
-    // Draw count
     ctx.fillStyle = "#fff";
     ctx.font = "bold 24px monospace";
     ctx.fillText(`${stats.count}`, width - 110, 85);

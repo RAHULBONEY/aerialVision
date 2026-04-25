@@ -87,10 +87,9 @@ exports.deleteStream = async (req, res) => {
     res.status(400).json({ success: false, message: e.message });
   }
 };
-//for non-admins
 exports.getActiveStreams = async (req, res) => {
   try {
-    const streams = await service.listActive();
+    const streams = await service.listActive(req.user.role);
     res.status(200).json({ success: true, data: streams });
   } catch (e) {
     console.error("Fetch Active Streams Error:", e);

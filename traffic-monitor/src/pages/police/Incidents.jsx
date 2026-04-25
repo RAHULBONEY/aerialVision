@@ -114,7 +114,7 @@ export default function Incidents() {
 
                 <div className="lg:col-span-1">
                     {selectedIncident ? (
-                        <div className="bg-white dark:bg-[#0a1525] border border-gray-200 dark:border-slate-800/50 rounded-xl p-6 sticky top-6">
+                        <div className="bg-white dark:bg-[#0a1525] border border-gray-200 dark:border-slate-800/50 rounded-xl p-6 sticky top-6 overflow-y-auto max-h-[calc(100vh-3rem)]">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Incident Details</h3>
                                 <button

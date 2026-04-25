@@ -29,3 +29,4 @@ dist-ssr
 __pycache__/
 ai-engine_pack.zip
 .env
+ai-engine/.env

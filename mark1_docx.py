@@ -57,4 +57,4 @@ for metric, value in metrics:
 
 # Save
 doc.save('Mark1_Model_Report.docx')
-print("✅ Report saved as 'Mark1_Model_Report.docx'")
+print("Report saved as 'Mark1_Model_Report.docx'")

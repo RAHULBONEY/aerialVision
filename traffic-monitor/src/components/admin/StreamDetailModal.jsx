@@ -123,9 +123,9 @@ export default function StreamDetailModal({ stream, open, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-start justify-center pt-8 sm:pt-10 bg-black/50 animate-in fade-in duration-200">
             <div className={cn(
-                "mx-4 my-8 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl transition-all duration-300",
+                "mx-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/50 dark:border-white/[0.06] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.03] transition-all duration-300",
                 isFullscreen
                     ? "w-full h-full max-w-none max-h-none"
                     : "w-full max-w-5xl max-h-[90vh] overflow-hidden"

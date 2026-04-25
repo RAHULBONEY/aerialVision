@@ -20,7 +20,7 @@ def create_comprehensive_mark1_report():
     output_dir = 'Mark1_Visualization_Report'
     os.makedirs(output_dir, exist_ok=True)
     
-    print(f"📊 Generating Mark 1 Training Report...")
+    print(f"Generating Mark 1 Training Report...")
     print(f"Outputs will be saved to: {output_dir}/")
     
     # Load model for metadata
@@ -77,7 +77,7 @@ def create_comprehensive_mark1_report():
     
     plt.savefig(f'{output_dir}/01_architecture_overview.png', dpi=300, bbox_inches='tight')
     plt.close()
-    print("✅ Architecture diagram created")
+    print("Architecture diagram created")
     
     # Figure 2: Dataset Distribution
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
@@ -113,7 +113,7 @@ def create_comprehensive_mark1_report():
     plt.tight_layout()
     plt.savefig(f'{output_dir}/02_dataset_distribution.png', dpi=300, bbox_inches='tight')
     plt.close()
-    print("✅ Dataset distribution created")
+    print("Dataset distribution created")
     
     # Figure 3: Augmentation Pipeline Visualization
     fig, ax = plt.subplots(figsize=(14, 10))
@@ -156,11 +156,11 @@ def create_comprehensive_mark1_report():
     
     plt.savefig(f'{output_dir}/03_augmentation_pipeline.png', dpi=300, bbox_inches='tight')
     plt.close()
-    print("✅ Augmentation pipeline visualized")
+    print("Augmentation pipeline visualized")
     
     # Figure 4: Training Metrics (if results.csv exists)
     if os.path.exists(results_csv):
-        print(f"📈 Found training history: {results_csv}")
+        print(f"Found training history: {results_csv}")
         results = pd.read_csv(results_csv)
         
         # Create subplots for metrics
@@ -254,10 +254,10 @@ def create_comprehensive_mark1_report():
         plt.tight_layout()
         plt.savefig(f'{output_dir}/04_training_curves.png', dpi=300, bbox_inches='tight')
         plt.close()
-        print("✅ Training curves generated from results.csv")
+        print("Training curves generated from results.csv")
     else:
-        print(f"⚠️  results.csv not found at {results_csv}")
-        print("   Creating final metrics summary instead...")
+        print(f"results.csv not found at {results_csv}")
+        print("Creating final metrics summary instead...")
         
         # Create final metrics visualization from checkpoint data
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -335,7 +335,7 @@ def create_comprehensive_mark1_report():
     plt.tight_layout()
     plt.savefig(f'{output_dir}/05_class_performance_matrix.png', dpi=300, bbox_inches='tight')
     plt.close()
-    print("✅ Class performance matrix created")
+    print("Class performance matrix created")
     
     # Summary Report Text
     with open(f'{output_dir}/REPORT_SUMMARY.txt', 'w') as f:
@@ -381,12 +381,12 @@ FILES GENERATED:
 All visualizations are 300 DPI and suitable for publication/reports.
 """)
     
-    print(f"\n🎉 Report generation complete!")
-    print(f"📁 All files saved in: {os.path.abspath(output_dir)}/")
-    print("🖼️  Generated files:")
+    print(f"Report generation complete!")
+    print(f"All files saved in: {os.path.abspath(output_dir)}/")
+    print("Generated files:")
     for f in os.listdir(output_dir):
         if f.endswith('.png'):
-            print(f"   • {f}")
+            print(f"   - {f}")
 
 if __name__ == "__main__":
     create_comprehensive_mark1_report()
