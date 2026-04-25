@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from './useSocket';
 
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:8001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export function useStreamTelemetry(stream) {
   const isSimulation = stream?.type === 'SIMULATION';
@@ -66,7 +66,7 @@ export function useStreamTelemetry(stream) {
         const abort = new AbortController();
         abortRef.current = abort;
 
-        const res = await fetch(`${GATEWAY_URL}/process-simulation`, {
+        const res = await fetch(`${API_URL}/api/process-simulation`, {
           method: 'POST',
           body: formData,
           signal: abort.signal,

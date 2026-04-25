@@ -3,7 +3,7 @@ import { Activity, AlertTriangle, MapPin, Wifi, WifiOff, Play, Pause } from "luc
 import { cn } from "@/lib/utils";
 import { computeDensityPercent, computeSpeedFromDensity } from "@/hooks/useLiveStreamMetrics";
 
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8001";
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function EmergencyStreamCard({ stream, onClick }) {
     const videoRef = useRef(null);
@@ -14,8 +14,8 @@ export default function EmergencyStreamCard({ stream, onClick }) {
     const isSimulation = stream.type === "SIMULATION";
 
     const videoUrl = isSimulation
-        ? `${GATEWAY_URL}/streams/${encodeURIComponent(stream.simulationId)}.mp4`
-        : `${GATEWAY_URL}/streams/${stream.id}`;
+        ? `${API_URL}/api/streams/${encodeURIComponent(stream.simulationId)}.mp4`
+        : `${API_URL}/api/streams/${stream.id}`;
 
     const statusConfig = {
         NORMAL: {
