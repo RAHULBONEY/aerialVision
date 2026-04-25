@@ -22,7 +22,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:8001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const INFERENCE_WIDTH = 1280;
 const statusPalette = {
   CLEAR: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', pulse: false },
@@ -143,8 +143,8 @@ export default function StreamTelemetry() {
 
   const videoUrl = currentStream
     ? isSimulation
-      ? `${GATEWAY_URL}/streams/${encodeURIComponent(currentStream.simulationId)}.mp4`
-      : `${GATEWAY_URL}/streams/${currentStream.id}`
+      ? `${API_URL}/api/streams/${encodeURIComponent(currentStream.simulationId)}.mp4`
+      : `${API_URL}/api/streams/${currentStream.id}`
     : null;
 
   const meta = getStatusMeta(stats.status);

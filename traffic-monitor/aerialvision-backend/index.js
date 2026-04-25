@@ -113,6 +113,7 @@ app.use("/api/traffic-police", trafficPoliceRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/emergency", require('./src/routes/emergency.routes'));
 app.use("/api/copilot", require('./src/routes/copilot.routes'));
+app.use("/api", require('./src/routes/aiEngineProxy.routes'));
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
