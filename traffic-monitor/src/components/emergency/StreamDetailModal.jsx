@@ -37,7 +37,7 @@ export default function StreamDetailModal({ stream, onClose }) {
     const status = statusConfig[stream.currentStatus] || statusConfig.NORMAL;
     const densityPercent = stream.metrics?.densityPercent ?? computeDensityPercent(stream.metrics?.count);
     const density = densityPercent / 100;
-    const speed = stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent);
+    const speed = (stream.metrics?.avgSpeed && stream.metrics.avgSpeed > 0) ? stream.metrics.avgSpeed : (stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent));
 
     return (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 sm:pt-10 bg-black/50 animate-in fade-in duration-200">

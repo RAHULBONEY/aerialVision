@@ -59,16 +59,19 @@ export function useEmergencyStreams() {
             const live = metricsMap[stream.id];
             if (!live) return stream;
 
-            const densityPercent = computeDensityPercent(live.count);
-            const speed = computeSpeedFromDensity(densityPercent);
+const densityPercent = computeDensityPercent(live.count);
+            const speed = (live.avgSpeed && live.avgSpeed > 0) ? live.avgSpeed : computeSpeedFromDensity(densityPercent);
 
             return {
                 ...stream,
                 metrics: {
                     ...stream.metrics,
-                    density: densityPercent / 100,          // keep 0–1 for backward compat
+                    density: densityPercent / 100,
                     densityPercent,
                     speed,
+                    avgSpeed: live.avgSpeed ?? 0,
+                    speeds: live.speeds ?? {},
+                    congestionPhase: live.congestionPhase ?? live.status ?? 'UNKNOWN',
                     count: live.count,
                     status: live.status,
                     updatedAt: live.timestamp,

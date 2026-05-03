@@ -96,6 +96,19 @@ export function useEmergencyRoutes() {
     }
   }, []);
 
+  const compareRoutes = useCallback(async (sessionId) => {
+    try {
+      const { data } = await axios.post(`${API_URL}/api/emergency/routes/${sessionId}/compare`);
+      if (data.success) {
+        return data;
+      }
+      return null;
+    } catch (err) {
+      console.error("Route comparison failed", err?.response?.data || err.message);
+      return null;
+    }
+  }, []);
+
   return {
     session,
     routes,
@@ -104,6 +117,7 @@ export function useEmergencyRoutes() {
     computeRoutes,
     pollTileProgress,
     analyzeRoute,
+    compareRoutes,
     fetchRouteHistory
   };
 }
