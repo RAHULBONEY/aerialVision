@@ -46,7 +46,7 @@ export default function EmergencyStreamCard({ stream, onClick }) {
     // Use live computed density & speed if available, else fallback
     const densityPercent = stream.metrics?.densityPercent ?? computeDensityPercent(stream.metrics?.count);
     const density = densityPercent / 100;
-    const speed = stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent);
+    const speed = (stream.metrics?.avgSpeed && stream.metrics.avgSpeed > 0) ? stream.metrics.avgSpeed : (stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent));
 
     const handleMouseEnter = () => {
         setIsHovered(true);

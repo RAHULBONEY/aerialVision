@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useEmergencyRoutes } from '../../hooks/useEmergencyRoutes';
 import { TileImage } from './TileImage';
 import { useTheme } from '@/context/ThemeProvider';
-import { MapPin, Navigation, Trash2, Loader2, Search, AlertTriangle, Satellite, Brain, Zap, History, Clock } from 'lucide-react';
+import { MapPin, Navigation, Trash2, Loader2, Search, AlertTriangle, Satellite, Brain, Zap, History, Clock, GitCompare, Trophy, BarChart3 } from 'lucide-react';
 
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const MUMBAI_CENTER = { lat: 19.076, lng: 72.8777 };
@@ -97,7 +97,7 @@ function PlacesInput({ placeholder, value, onChange, onPlaceSelect, icon: Icon, 
 }
 
 export function RouteSelector() {
-    const { computeRoutes, pollTileProgress, analyzeRoute, fetchRouteHistory, loading, error, session, routes } = useEmergencyRoutes();
+    const { computeRoutes, pollTileProgress, analyzeRoute, compareRoutes, fetchRouteHistory, loading, error, session, routes } = useEmergencyRoutes();
     const { theme } = useTheme();
 
     const mapRef = useRef(null);
@@ -118,6 +118,8 @@ export function RouteSelector() {
 
     const [analyzing, setAnalyzing] = useState(false);
     const [analysisResults, setAnalysisResults] = useState(null);
+    const [comparing, setComparing] = useState(false);
+    const [comparisonResult, setComparisonResult] = useState(null);
 
     const [routeHistory, setRouteHistory] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
@@ -298,7 +300,7 @@ export function RouteSelector() {
         const primaryRoute = routes[0];
         if (!primaryRoute?.encodedPolyline) return;
 
-        const tileResults = analysisData.data || analysisData.results || [];
+        const tileResults = analysisData.tileResults || analysisData.data || analysisData.results || [];
         if (!tileResults.length) return;
 
         routePolylinesRef.current.forEach(p => p.setMap(null));
@@ -339,6 +341,56 @@ export function RouteSelector() {
             routePolylinesRef.current.push(segment);
         }
     }, [routes, theme]);
+
+    const drawComparisonRoutes = useCallback((comparisonData) => {
+        if (!mapInstanceRef.current || !window.google?.maps?.geometry || !routes.length) return;
+
+        routePolylinesRef.current.forEach(p => p.setMap(null));
+        routePolylinesRef.current = [];
+
+        comparisonData.routeMetrics.forEach((metric) => {
+            const route = routes[metric.routeIndex];
+            if (!route?.encodedPolyline) return;
+
+            const path = window.google.maps.geometry.encoding.decodePath(route.encodedPolyline);
+            const isRecommended = metric.rank === 1;
+
+            const polyline = new window.google.maps.Polyline({
+                path,
+                geodesic: true,
+                strokeColor: isRecommended ? '#10b981' : '#ef4444',
+                strokeOpacity: isRecommended ? 1.0 : 0.6,
+                strokeWeight: isRecommended ? 7 : 4,
+                zIndex: isRecommended ? 10 : 5,
+                map: mapInstanceRef.current,
+            });
+
+            routePolylinesRef.current.push(polyline);
+
+            if (isRecommended && path.length > 0) {
+                const midIndex = Math.floor(path.length / 2);
+                const midPoint = path[midIndex];
+
+                const labelMarker = new window.google.maps.Marker({
+                    position: midPoint,
+                    map: mapInstanceRef.current,
+                    icon: {
+                        path: window.google.maps.SymbolPath.CIRCLE,
+                        scale: 0,
+                    },
+                    label: {
+                        text: 'RECOMMENDED',
+                        color: '#10b981',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                    },
+                    zIndex: 100,
+                });
+
+                routePolylinesRef.current.push(labelMarker);
+            }
+        });
+    }, [routes]);
 
     const handleGenerate = async () => {
         if (!origin || !destination) return;
@@ -388,6 +440,20 @@ export function RouteSelector() {
 
         if (result) {
             drawHeatmapRoute(result);
+        }
+    };
+
+    const handleCompare = async () => {
+        if (!session) return;
+        setComparing(true);
+        setComparisonResult(null);
+
+        const result = await compareRoutes(session);
+        setComparisonResult(result);
+        setComparing(false);
+
+        if (result && result.success) {
+            drawComparisonRoutes(result);
         }
     };
 
@@ -618,6 +684,20 @@ export function RouteSelector() {
                                         )}
                                     </button>
                                 )}
+
+                                {analysisResults && routes.length > 1 && (
+                                    <button
+                                        onClick={handleCompare}
+                                        disabled={comparing}
+                                        className="w-full mt-2 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-700 dark:disabled:to-gray-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg border border-cyan-400/30 disabled:border-gray-300 dark:disabled:border-gray-600 transition-all shadow-lg shadow-cyan-500/10 disabled:shadow-none"
+                                    >
+                                        {comparing ? (
+                                            <><Loader2 className="w-4 h-4 animate-spin" /> Comparing Routes...</>
+                                        ) : (
+                                            <><GitCompare className="w-4 h-4" /> Compare Route Alternatives</>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -637,10 +717,42 @@ export function RouteSelector() {
                                     </div>
                                 </div>
 
-                                {(analysisResults.data || analysisResults.results) && (
+                                {analysisResults.clearanceSummary && (
+                                    <div className="grid grid-cols-4 gap-1.5 mb-3">
+                                        {['CLEAR', 'MODERATE', 'DIFFICULT', 'IMPASSABLE'].map(level => (
+                                            <div key={level} className="text-center p-1.5 rounded bg-gray-50 dark:bg-gray-900/50">
+                                                <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                                    {analysisResults.clearanceSummary[level] || 0}
+                                                </div>
+                                                <div className="text-[9px] text-gray-500 dark:text-gray-400">{level}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {analysisResults.hotspots && analysisResults.hotspots.length > 0 && (
+                                    <div className="p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/20 mb-3">
+                                        <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
+                                            {analysisResults.hotspots.length} Congestion Hotspots
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {analysisResults.hotspots.map((h, i) => (
+                                                <span key={i} className="text-[9px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded font-mono">
+                                                    {h.vehicleCount}v
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(analysisResults.tileResults || analysisResults.data || analysisResults.results) && (
                                     <div className="space-y-1.5 max-h-[200px] overflow-y-auto text-xs pr-1">
-                                        {(analysisResults.data || analysisResults.results).map((r, i) => {
+                                        {(analysisResults.tileResults || analysisResults.data || analysisResults.results).map((r, i) => {
                                             const count = r.vehicleCount ?? r.vehicle_count ?? 0;
+                                            const clearanceLevel = r.clearanceLevel ?? null;
+                                            const delta = r.delta ?? 0;
+                                            const deltaColor = delta > 0 ? 'text-red-500' : delta < 0 ? 'text-green-500' : 'text-gray-400';
+                                            const clearanceColor = clearanceLevel === 'IMPASSABLE' ? 'text-red-600' : clearanceLevel === 'DIFFICULT' ? 'text-amber-500' : clearanceLevel === 'MODERATE' ? 'text-yellow-500' : 'text-green-500';
                                             const densityColor = count > 50 ? 'text-red-600 dark:text-red-400' : count > 20 ? 'text-amber-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400';
                                             const barColor = count > 50 ? 'bg-red-500' : count > 20 ? 'bg-yellow-500' : 'bg-green-500';
                                             const barWidth = Math.min((count / 120) * 100, 100);
@@ -652,8 +764,16 @@ export function RouteSelector() {
                                                             {count}
                                                         </span>
                                                     </div>
-                                                    <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                    <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-1">
                                                         <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${barWidth}%` }} />
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px]">
+                                                        {clearanceLevel && (
+                                                            <span className={clearanceColor}>{clearanceLevel}</span>
+                                                        )}
+                                                        {delta !== 0 && (
+                                                            <span className={deltaColor}>{delta > 0 ? '+' : ''}{r.deltaPercent ?? delta}%</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -662,6 +782,90 @@ export function RouteSelector() {
                                 )}
                             </div>
                         )}
+
+                        {comparisonResult && comparisonResult.success && (
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-cyan-300 dark:border-cyan-500/30 shadow-sm">
+                                <h2 className="text-sm font-semibold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <GitCompare className="w-4 h-4" /> Route Comparison
+                                </h2>
+
+                                <div className="space-y-2 mb-3">
+                                    {comparisonResult.routeMetrics.map((route, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`p-3 rounded-lg border text-sm transition-all ${
+                                                route.rank === 1
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-500/30'
+                                                    : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700/30'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    {route.rank === 1 && <Trophy className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                                                    <span className={`font-bold text-xs uppercase tracking-wider ${
+                                                        route.rank === 1 ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'
+                                                    }`}>
+                                                        #{route.rank} {route.label}
+                                                    </span>
+                                                </div>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {route.distanceKm.toFixed(1)} km · {route.durationMin} min
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 text-center">
+                                                <div className="p-1.5 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                    <div className="text-xs font-mono font-bold text-gray-900 dark:text-white">
+                                                        {route.vehicles}
+                                                    </div>
+                                                    <div className="text-[9px] text-gray-500 dark:text-gray-400">Vehicles</div>
+                                                </div>
+                                                <div className="p-1.5 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                    <div className="text-xs font-mono font-bold text-gray-900 dark:text-white">
+                                                        {route.vehiclesPerKm}/km
+                                                    </div>
+                                                    <div className="text-[9px] text-gray-500 dark:text-gray-400">Density</div>
+                                                </div>
+                                                <div className={`p-1.5 rounded border ${
+                                                    route.clearancePerKm <= 5
+                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-500/20'
+                                                        : route.clearancePerKm <= 15
+                                                            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/20'
+                                                            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/20'
+                                                }`}>
+                                                    <div className={`text-xs font-mono font-bold ${
+                                                        route.clearancePerKm <= 5
+                                                            ? 'text-emerald-700 dark:text-emerald-400'
+                                                            : route.clearancePerKm <= 15
+                                                                ? 'text-amber-700 dark:text-amber-400'
+                                                                : 'text-red-700 dark:text-red-400'
+                                                    }`}>
+                                                        {route.clearancePerKm}
+                                                    </div>
+                                                    <div className="text-[9px] text-gray-500 dark:text-gray-400">Clearance</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {comparisonResult.recommendation && (
+                                    <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-500/30">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Trophy className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Recommendation</span>
+                                        </div>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                            {comparisonResult.recommendation.route}
+                                        </p>
+                                        <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+                                            {comparisonResult.recommendation.reason}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                     </div>
                 </div>
 
