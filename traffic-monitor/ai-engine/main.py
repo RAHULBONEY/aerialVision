@@ -197,34 +197,40 @@ async def list_simulations():
 
 @app.post("/analyze")
 async def analyze_tiles(payload: dict):
-    print(f"Forwarding tile analysis request to GPU Brain...")
+    print(f"[GATEWAY] Forwarding tile analysis request to GPU Brain...")
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=30.0)) as client:
-        try:
-            response = await client.post(
-                f"{KAGGLE_BRAIN_URL}/analyze",
-                json=payload,
-                headers={"ngrok-skip-browser-warning": "true"}
-            )
+    async def proxy_analysis_stream():
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=30.0)) as client:
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{KAGGLE_BRAIN_URL}/analyze",
+                    json=payload,
+                    headers={"ngrok-skip-browser-warning": "true"}
+                ) as response:
 
-            if response.status_code != 200:
-                return JSONResponse(
-                    status_code=response.status_code,
-                    content={"error": f"GPU Brain returned HTTP {response.status_code}"}
-                )
+                    if response.status_code != 200:
+                        error_body = await response.aread()
+                        yield json.dumps({
+                            "error": f"GPU Brain returned HTTP {response.status_code}",
+                            "details": error_body.decode("utf-8", errors="replace")
+                        }) + "\n"
+                        return
 
-            return response.json()
+                    async for chunk in response.aiter_bytes():
+                        yield chunk
 
-        except httpx.TimeoutException:
-            return JSONResponse(
-                status_code=504,
-                content={"error": "GPU Brain timeout during tile analysis"}
-            )
-        except Exception as e:
-            return JSONResponse(
-                status_code=500,
-                content={"error": f"GPU Brain connection failed: {str(e)}"}
-            )
+            except httpx.TimeoutException:
+                yield json.dumps({"error": "GPU Brain timeout during tile analysis"}) + "\n"
+            except Exception as e:
+                print(f"[GATEWAY] Proxy error: {e}")
+                yield json.dumps({"error": f"GPU Brain connection failed: {str(e)}"}) + "\n"
+
+    return StreamingResponse(
+        proxy_analysis_stream(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8001))
