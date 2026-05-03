@@ -48,6 +48,9 @@ export function useLiveStreamMetrics(streamIds = []) {
           density: stats.density ?? 0,
           status: stats.status ?? 'UNKNOWN',
           greenWave: stats.green_wave ?? false,
+          avgSpeed: stats.avg_speed ?? 0,
+          speeds: stats.speeds ?? {},
+          congestionPhase: stats.congestion_phase ?? stats.status ?? 'UNKNOWN',
           timestamp: Date.now(),
         },
       };
