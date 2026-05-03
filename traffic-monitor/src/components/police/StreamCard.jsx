@@ -58,7 +58,7 @@ export default function StreamCard({ stream, onClick }) {
     const StatusIcon = status.icon;
     const densityPercent = stream.metrics?.densityPercent ?? computeDensityPercent(stream.metrics?.count);
     const density = densityPercent / 100;
-    const speed = stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent);
+    const speed = (stream.metrics?.avgSpeed && stream.metrics.avgSpeed > 0) ? stream.metrics.avgSpeed : (stream.metrics?.speed ?? computeSpeedFromDensity(densityPercent));
 
     const thumbnailUrl = getStreamThumbnail(stream.id, stream.viewType, stream.type, stream.simulationId);
 
