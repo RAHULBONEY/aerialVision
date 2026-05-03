@@ -35,8 +35,7 @@ const navItems = [
     { label: "Copilot", path: "/admin/copilot", icon: Bot },
 ];
 
-export default function AdminSidebar() {
-    const [collapsed, setCollapsed] = useState(false);
+export default function AdminSidebar({ collapsed, setCollapsed }) {
     const [isHovered, setIsHovered] = useState(false);
     const { theme, toggleTheme } = useTheme();
     const { user, logout } = useAuth();
@@ -63,7 +62,7 @@ export default function AdminSidebar() {
         <aside
             className={cn(
                 `fixed top-0 left-0 h-screen ${sidebarBg} transition-all duration-300 flex flex-col z-40 shadow-lg`,
-                collapsed ? "w-20" : "w-64"
+                isExpanded ? "w-64" : "w-20"
             )}
             onMouseEnter={() => {
                 if (collapsed) setIsHovered(true);

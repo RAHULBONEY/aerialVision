@@ -49,6 +49,34 @@ function severityMeta(sev) {
   }
 }
 
+function getVideoDisplayRect(video) {
+  const containerW = video.clientWidth;
+  const containerH = video.clientHeight;
+  const intrinsicW = video.videoWidth || 1280;
+  const intrinsicH = video.videoHeight || 720;
+
+  const containerRatio = containerW / containerH;
+  const intrinsicRatio = intrinsicW / intrinsicH;
+
+  let drawW, drawH, offsetX, offsetY;
+
+  if (containerRatio > intrinsicRatio) {
+    // Container is wider: black bars on left/right
+    drawH = containerH;
+    drawW = containerH * intrinsicRatio;
+    offsetX = (containerW - drawW) / 2;
+    offsetY = 0;
+  } else {
+    // Container is taller: black bars on top/bottom
+    drawW = containerW;
+    drawH = containerW / intrinsicRatio;
+    offsetX = 0;
+    offsetY = (containerH - drawH) / 2;
+  }
+
+  return { drawW, drawH, offsetX, offsetY, intrinsicW, intrinsicH };
+}
+
 function useBoxOverlay(mediaRef, boxes) {
   const canvasRef = useRef(null);
 
@@ -57,8 +85,8 @@ function useBoxOverlay(mediaRef, boxes) {
     const canvas = canvasRef.current;
     if (!media || !canvas) return;
 
-    const cw = media.clientWidth;
-    const ch = media.clientHeight;
+    const cw = media.clientWidth || 1280;
+    const ch = media.clientHeight || 720;
     if (canvas.width !== cw || canvas.height !== ch) {
       canvas.width = cw;
       canvas.height = ch;
@@ -67,40 +95,41 @@ function useBoxOverlay(mediaRef, boxes) {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, cw, ch);
 
-    if (!boxes || boxes.length === 0) return;
+    const { drawW, drawH, offsetX, offsetY, intrinsicW, intrinsicH } = getVideoDisplayRect(media);
 
-    const intrinsicW = media.tagName === 'VIDEO' ? media.videoWidth : media.naturalWidth;
-    const intrinsicH = media.tagName === 'VIDEO' ? media.videoHeight : media.naturalHeight;
     if (!intrinsicW || !intrinsicH) return;
 
-    const sx = cw / intrinsicW;
-    const sy = ch / intrinsicH;
+    const sx = drawW / intrinsicW;
+    const sy = drawH / intrinsicH;
 
-    boxes.forEach((b) => {
-      const x1 = b.x1 * sx;
-      const y1 = b.y1 * sy;
-      const x2 = b.x2 * sx;
-      const y2 = b.y2 * sy;
-      const label = b.label || '';
-      const conf = b.confidence || 0;
+    if (boxes && boxes.length > 0) {
+      boxes.forEach((b) => {
+        const x1 = offsetX + b.x1 * sx;
+        const y1 = offsetY + b.y1 * sy;
+        const x2 = offsetX + b.x2 * sx;
+        const y2 = offsetY + b.y2 * sy;
+        const label = b.label || '';
+        const conf = b.confidence || 0;
 
-      const isAmbulance = label.toLowerCase().includes('ambulance');
-      const color = isAmbulance ? '#22c55e' : '#3b82f6';
+        const isAmbulance = label.toLowerCase().includes('ambulance');
+        const color = isAmbulance ? '#22c55e' : '#3b82f6';
 
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-      if (label) {
-        const txt = `${label} ${(conf * 100).toFixed(0)}%`;
-        ctx.font = '12px monospace';
-        const tw = ctx.measureText(txt).width;
-        ctx.fillStyle = color;
-        ctx.fillRect(x1, y1 - 18, tw + 8, 18);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(txt, x1 + 4, y1 - 5);
-      }
-    });
+        if (label) {
+          const txt = `${label} ${(conf * 100).toFixed(0)}%`;
+          ctx.font = '12px monospace';
+          const tw = ctx.measureText(txt).width;
+          ctx.fillStyle = color;
+          ctx.fillRect(x1, y1 - 18, tw + 8, 18);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(txt, x1 + 4, y1 - 5);
+        }
+      });
+    }
+
   }, [boxes, mediaRef]);
 
   useEffect(() => {
@@ -128,6 +157,7 @@ export default function StreamTelemetry() {
     stats,
     boxes,
     incidents,
+    frameImage,
     connectionStatus,
     error,
     isLoading: telemetryLoading,
@@ -314,7 +344,20 @@ export default function StreamTelemetry() {
 
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
           <div className="flex-1 relative bg-black flex items-center justify-center min-h-[300px] lg:min-h-0">
-            {videoUrl && (
+            {isSimulation && frameImage ? (
+              <>
+                <img
+                  src={frameImage}
+                  alt="Annotated Stream"
+                  className="w-full h-full object-contain"
+                />
+                {greenWaveActive && (
+                  <div className="absolute top-0 left-0 right-0 bg-blue-600 text-white text-center py-2.5 font-bold text-sm animate-pulse z-20">
+                    🚑 GREEN WAVE ACTIVE — AMBULANCE DETECTED
+                  </div>
+                )}
+              </>
+            ) : videoUrl && (
               <>
                 {isSimulation ? (
                   <video

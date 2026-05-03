@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSocket } from "@/hooks/useSocket";
+import SmartVideoPlayer from "@/components/stream/SmartVideoPlayer";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -27,7 +28,8 @@ export default function StreamDetailModal({ stream, open, onClose }) {
         streamStatus,
         incidents,
         greenWaveActive,
-        analysisProgress
+        analysisProgress,
+        getFrameData,
     } = useSocket(open && stream ? stream.id : null);
 
     // Determine the correct URL based on stream type
@@ -189,16 +191,14 @@ export default function StreamDetailModal({ stream, open, onClose }) {
                             {streamUrl ? (
                                 <>
                                     {isSimulation ? (
-                                        /* SIMULATION: Use HTML5 Video Element */
-                                        <video
-                                            src={streamUrl}
-                                            className="w-full h-full object-contain"
-                                            autoPlay
-                                            loop
-                                            muted={isMuted}
-                                            controls
-                                            onLoadedData={() => setVideoLoaded(true)}
-                                            onError={() => setVideoError("Failed to load simulation video. Make sure Python Gateway is running.")}
+                                        <SmartVideoPlayer
+                                            videoSrc={streamUrl}
+                                            streamId={stream.id}
+                                            stats={stats}
+                                            greenWaveActive={greenWaveActive}
+                                            getFrameData={getFrameData}
+                                            streamStatus={streamStatus}
+                                            className="w-full h-full"
                                         />
                                     ) : (
                                         /* RTSP/Webcam: Use Image (MJPEG proxy) */
@@ -211,9 +211,9 @@ export default function StreamDetailModal({ stream, open, onClose }) {
                                         />
                                     )}
 
-                                    {!videoLoaded && !videoError && (
+                                    {!videoLoaded && !videoError && !isSimulation && (
                                         <div className="absolute top-4 left-4 text-white text-xs bg-black/70 px-2 py-1 rounded">
-                                            {isSimulation ? "Loading video..." : "Waiting for first frame…"}
+                                            Waiting for first frame…
                                         </div>
                                     )}
                                 </>
@@ -226,12 +226,12 @@ export default function StreamDetailModal({ stream, open, onClose }) {
                                 </div>
                             )}
 
-                            {/* Loading Indicator */}
-                            {!videoLoaded && !videoError && streamUrl && (
+                            {/* Loading Indicator for non-simulation streams */}
+                            {!videoLoaded && !videoError && streamUrl && !isSimulation && (
                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                     <div className="text-center">
                                         <div className="w-12 h-12 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-                                        <p className="text-white">{isSimulation ? "Loading video..." : "Connecting to stream..."}</p>
+                                        <p className="text-white">Connecting to stream...</p>
                                     </div>
                                 </div>
                             )}
@@ -252,7 +252,6 @@ export default function StreamDetailModal({ stream, open, onClose }) {
                                             onClick={() => {
                                                 setVideoError(null);
                                                 setVideoLoaded(false);
-                                                // Force re-fetch
                                                 const currentUrl = streamUrl;
                                                 setStreamUrl(null);
                                                 setTimeout(() => setStreamUrl(currentUrl), 100);
