@@ -1,22 +1,5 @@
 #!/usr/bin/env python3
-"""
-Aerial Vision — Mission Control CLI
-====================================
-A standalone, local Python CLI that communicates with the remote
-FastAPI GPU Inference Engine over HTTP.
 
-Usage:
-    avi --host http://<IP>:8000 status
-    avi stream start cam-001 "rtsp://..." --model mark-5
-    avi stream stop cam-001
-    avi probe "https://youtube.com/..."
-    avi simulations list
-    avi simulation run scenario-001 --model mark-4.5
-    avi upload ./local_video.mp4 --model mark-5
-
-Environment:
-    AERIAL_HOST    Default backend URL (falls back to http://localhost:8000)
-"""
 
 import os
 import sys
@@ -44,9 +27,7 @@ stream_app = typer.Typer(help="Manage active inference streams")
 app.add_typer(stream_app, name="stream")
 console = Console()
 
-# --------------------------------------------------------------------------- #
-# Helpers
-# --------------------------------------------------------------------------- #
+
 
 def resolve_host(ctx: typer.Context) -> str:
     """Return the effective backend base URL."""
@@ -73,7 +54,7 @@ def call_api(ctx: typer.Context, method: str, path: str, **kwargs):
     instead of dumping Python tracebacks.
     """
     url = _build_url(ctx, path)
-    # Default timeout 30 s; callers can override (e.g. upload passes 300).
+    
     timeout = kwargs.pop("timeout", 30)
     try:
         return requests.request(method, url, timeout=timeout, **kwargs)
@@ -120,9 +101,7 @@ def handle_http_error(resp: requests.Response):
     raise typer.Exit(code=1)
 
 
-# --------------------------------------------------------------------------- #
-# Typer callback (resolves --host)
-# --------------------------------------------------------------------------- #
+
 
 @app.callback()
 def main(
@@ -137,9 +116,7 @@ def main(
     ctx.obj["host_override"] = host
 
 
-# --------------------------------------------------------------------------- #
-# status
-# --------------------------------------------------------------------------- #
+
 
 @app.command()
 def status(ctx: typer.Context):
@@ -152,7 +129,7 @@ def status(ctx: typer.Context):
     handle_http_error(streams_resp)
     streams_data = streams_resp.json()
 
-    # ---- Main metrics table ----
+   
     table = Table(
         title="Aerial Vision GPU Engine Status",
         show_header=True,
@@ -202,7 +179,7 @@ def status(ctx: typer.Context):
 
     console.print(table)
 
-    # ---- Active streams table ----
+   
     active_streams = streams_data.get("streams", {})
     if active_streams:
         st = Table(
@@ -232,9 +209,7 @@ def status(ctx: typer.Context):
         console.print(Panel("[dim]No active streams.[/]", border_style="dim"))
 
 
-# --------------------------------------------------------------------------- #
-# probe
-# --------------------------------------------------------------------------- #
+
 
 @app.command()
 def probe(
@@ -257,9 +232,7 @@ def probe(
     console.print(table)
 
 
-# --------------------------------------------------------------------------- #
-# simulations list
-# --------------------------------------------------------------------------- #
+
 
 @app.command(name="list")
 def simulations_list(ctx: typer.Context):
@@ -287,9 +260,7 @@ def simulations_list(ctx: typer.Context):
     console.print(table)
 
 
-# --------------------------------------------------------------------------- #
-# Shared telemetry consumer
-# --------------------------------------------------------------------------- #
+
 
 def _consume_telemetry(
     ctx: typer.Context,
@@ -323,7 +294,7 @@ def _consume_telemetry(
     def make_layout() -> Layout:
         layout = Layout()
 
-        # Top pane: live stats
+        
         stats_text = Text()
         stats_text.append("Frame: ", style="cyan")
         stats_text.append(f"{frame_stats['frame']}  ", style="bold white")
@@ -345,7 +316,7 @@ def _consume_telemetry(
 
         top = Panel(stats_text, title="Telemetry", border_style="blue")
 
-        # Bottom pane: recent incidents
+       
         if incidents:
             it = Table(show_header=True, header_style="bold red")
             it.add_column("Type", style="yellow")
@@ -373,7 +344,7 @@ def _consume_telemetry(
 
     try:
         with Live(make_layout(), console=console, refresh_per_second=4, screen=False) as live:
-            # (10, None) => 10 s connect timeout, infinite read timeout for streaming
+           
             resp = call_api(ctx, "GET", telemetry_url, timeout=(10, None), stream=True)
             handle_http_error(resp)
 
@@ -456,9 +427,6 @@ def _consume_telemetry(
         )
 
 
-# --------------------------------------------------------------------------- #
-# simulation run
-# --------------------------------------------------------------------------- #
 
 @app.command(name="run")
 def simulation_run(
@@ -494,9 +462,6 @@ def simulation_run(
     _consume_telemetry(ctx, stream_url, video_id_for_cancel=video_id)
 
 
-# --------------------------------------------------------------------------- #
-# upload
-# --------------------------------------------------------------------------- #
 
 @app.command()
 def upload(
@@ -540,9 +505,7 @@ def upload(
     _consume_telemetry(ctx, stream_url, video_id_for_cancel=video_id)
 
 
-# --------------------------------------------------------------------------- #
-# stream start
-# --------------------------------------------------------------------------- #
+
 
 @stream_app.command("start")
 def stream_start(
@@ -575,9 +538,6 @@ def stream_start(
     )
 
 
-# --------------------------------------------------------------------------- #
-# stream stop
-# --------------------------------------------------------------------------- #
 
 @stream_app.command("stop")
 def stream_stop(
@@ -613,9 +573,7 @@ def stream_stop(
         )
 
 
-# --------------------------------------------------------------------------- #
-# Entry point
-# --------------------------------------------------------------------------- #
+
 
 if __name__ == "__main__":
     app()
