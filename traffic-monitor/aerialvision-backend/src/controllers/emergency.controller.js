@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
+const readline = require('readline');
 const routeService = require('../services/route.service');
 const polylineService = require('../services/polyline.service');
 const imageryService = require('../services/imagery.service');
@@ -202,38 +203,204 @@ exports.analyzeRoute = async (req, res) => {
 
         const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'https://aerialvision.onrender.com';
 
-        console.log(`🧠 Forwarding ${tileIds.length} tiles to AI Engine for analysis...`);
+        console.log(`Progressive analysis: ${tileIds.length} tiles for session ${sessionId}`);
 
-        const { data } = await axios.post(`${AI_ENGINE_URL}/analyze`, {
+        const engineResponse = await axios.post(`${AI_ENGINE_URL}/analyze`, {
             sessionId,
             tileIds,
             model: model || 'mark-5'
         }, {
-            timeout: 120000
+            responseType: 'stream',
+            timeout: 180000
         });
 
-        if (req.user) {
-          auditLogsService.logAction({
-            action: "EMERGENCY_ANALYZE_ROUTE",
-            category: "EMERGENCY",
-            performedBy: req.user,
-            targetId: sessionId,
-            targetName: `AI Analysis (Model: ${model || 'mark-5'})`,
-            details: { tileCount: tileIds.length }
-          });
+        const tileResults = [];
+        let summary = null;
+
+        const rl = readline.createInterface({
+            input: engineResponse.data,
+            crlfDelay: Infinity
+        });
+
+        for await (const line of rl) {
+            if (!line.trim()) continue;
+
+            try {
+                const packet = JSON.parse(line);
+
+                if (packet.type === 'summary') {
+                    summary = packet;
+                } else {
+                    tileResults.push(packet);
+                    process.stdout.write(`\rTile ${tileResults.length}/${tileIds.length} | Vehicles: ${packet.vehicleCount || 0} | Clearance: ${packet.clearanceLevel || 'N/A'} | Delta: ${packet.deltaPercent > 0 ? '+' : ''}${packet.deltaPercent}%`);
+                }
+            } catch (e) {
+                console.warn('Failed to parse NDJSON line:', e.message);
+            }
         }
+
+        console.log(`\nAnalysis complete: ${summary ? summary.totalVehicles : 0} vehicles across ${tileResults.length} tiles`);
+
+        if (req.user) {
+            auditLogsService.logAction({
+                action: "EMERGENCY_ANALYZE_ROUTE",
+                category: "EMERGENCY",
+                performedBy: req.user,
+                targetId: sessionId,
+                targetName: `AI Analysis (Model: mark-5)`,
+                details: { tileCount: tileIds.length, totalVehicles: summary?.totalVehicles || 0 }
+            });
+        }
+
+        const clearanceSummary = { CLEAR: 0, MODERATE: 0, DIFFICULT: 0, IMPASSABLE: 0 };
+        tileResults.forEach(t => {
+            if (clearanceSummary.hasOwnProperty(t.clearanceLevel)) {
+                clearanceSummary[t.clearanceLevel]++;
+            }
+        });
 
         return res.status(200).json({
             success: true,
             sessionId,
-            analysis: data
+            analysis: {
+                summary: summary || {},
+                tileResults,
+                clearanceSummary,
+                hotspots: summary?.hotspots || [],
+                totalVehicles: summary?.totalVehicles || 0,
+                tilesProcessed: tileResults.length
+            }
         });
 
     } catch (error) {
         console.error('Error in analyzeRoute:', error?.response?.data || error.message);
-        res.status(500).json({ 
-            success: false, 
-            error: error?.response?.data?.error || error.message 
+        res.status(500).json({
+            success: false,
+            error: error?.response?.data?.error || error.message
+        });
+    }
+};
+
+exports.compareRoutes = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const db = getFirestore();
+        const sessionRef = db.collection('routeSessions').doc(sessionId);
+        const sessionDoc = await sessionRef.get();
+
+        if (!sessionDoc.exists) {
+            return res.status(404).json({ success: false, error: 'Session not found' });
+        }
+
+        const sessionData = sessionDoc.data();
+        const routes = sessionData.routes || [];
+        const allTiles = sessionData.tiles || [];
+
+        if (!routes.length) {
+            return res.status(400).json({ success: false, error: 'No routes in session' });
+        }
+
+        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'https://aerialvision.onrender.com';
+        const tileIds = allTiles.map(t => t.tileId);
+
+        console.log(`Route comparison: analyzing ${tileIds.length} tiles for ${routes.length} routes`);
+
+        const engineResponse = await axios.post(`${AI_ENGINE_URL}/analyze`, {
+            sessionId,
+            tileIds,
+            model: 'mark-5'
+        }, {
+            responseType: 'stream',
+            timeout: 180000
+        });
+
+        const tileResults = [];
+        let summary = null;
+
+        const rl = readline.createInterface({
+            input: engineResponse.data,
+            crlfDelay: Infinity
+        });
+
+        for await (const line of rl) {
+            if (!line.trim()) continue;
+            try {
+                const packet = JSON.parse(line);
+                if (packet.type === 'summary') {
+                    summary = packet;
+                } else {
+                    tileResults.push(packet);
+                }
+            } catch (e) {
+                console.warn('Compare parse error:', e.message);
+            }
+        }
+
+        const routeMetrics = routes.map((route, idx) => {
+            const routePolyline = polylineService.decodePolyline(route.encodedPolyline);
+            const routeDistanceKm = (route.distanceMeters || 0) / 1000;
+
+            let routeVehicles = 0;
+            let routeClearance = 0;
+            let matchingTiles = 0;
+
+            tileResults.forEach(tile => {
+                if (tile.status !== 'processed') return;
+                const match = allTiles.find(at => at.tileId === tile.tileId);
+                if (match) {
+                    const tileLat = match.center?.lat || 0;
+                    const tileLng = match.center?.lng || 0;
+                    let minDist = Infinity;
+                    routePolyline.forEach(point => {
+                        const d = Math.sqrt(Math.pow(tileLat - point.lat, 2) + Math.pow(tileLng - point.lng, 2));
+                        minDist = Math.min(minDist, d);
+                    });
+                    if (minDist < 0.002) {
+                        routeVehicles += tile.vehicleCount || 0;
+                        routeClearance += tile.clearanceScore || 0;
+                        matchingTiles++;
+                    }
+                }
+            });
+
+            return {
+                routeIndex: idx,
+                label: route.label || `Route ${idx + 1}`,
+                distanceKm: routeDistanceKm,
+                durationMin: Math.round((route.durationSeconds || 0) / 60),
+                vehicles: routeVehicles,
+                vehiclesPerKm: routeDistanceKm > 0 ? Math.round(routeVehicles / routeDistanceKm) : 0,
+                clearanceScore: routeClearance,
+                clearancePerKm: routeDistanceKm > 0 ? Math.round(routeClearance / routeDistanceKm) : 0,
+                matchingTiles
+            };
+        });
+
+        routeMetrics.sort((a, b) => a.clearancePerKm - b.clearancePerKm);
+        routeMetrics.forEach((r, i) => { r.rank = i + 1; });
+
+        return res.status(200).json({
+            success: true,
+            sessionId,
+            routesCompared: routes.length,
+            totalVehicles: summary?.totalVehicles || 0,
+            routeMetrics,
+            recommendation: routeMetrics[0] ? {
+                route: routeMetrics[0].label,
+                rank: 1,
+                reason: routeMetrics[0].clearancePerKm <= 5
+                    ? 'Lowest vehicle density per km - safest corridor'
+                    : routeMetrics[0].clearancePerKm <= 15
+                        ? 'Moderate density - recommend patrol unit escort'
+                        : 'High density - consider alternative timing'
+            } : null
+        });
+
+    } catch (error) {
+        console.error('Error in compareRoutes:', error?.response?.data || error.message);
+        res.status(500).json({
+            success: false,
+            error: error?.response?.data?.error || error.message
         });
     }
 };

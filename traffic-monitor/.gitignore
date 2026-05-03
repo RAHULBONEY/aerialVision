@@ -30,3 +30,4 @@ __pycache__/
 ai-engine_pack.zip
 .env
 ai-engine/.env
+traffic-monitor/ai-engine/.env

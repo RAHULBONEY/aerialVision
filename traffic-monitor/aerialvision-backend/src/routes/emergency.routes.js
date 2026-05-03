@@ -10,5 +10,6 @@ router.get('/routes/:sessionId/tiles', emergencyController.pollTiles);
 router.get('/tiles/:tileId', emergencyController.serveTile);
 router.delete('/routes/:sessionId', emergencyController.deleteSession);
 router.post('/routes/:sessionId/analyze', emergencyController.analyzeRoute);
+router.post('/routes/:sessionId/compare', emergencyController.compareRoutes);
 
 module.exports = router;

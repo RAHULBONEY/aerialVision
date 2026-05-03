@@ -9,6 +9,12 @@ class PolylineService {
      * @param {number} intervalMeters 
      * @returns {Array<{lat: number, lng: number, index: number}>}
      */
+    decodePolyline(encodedPolyline) {
+        if (!encodedPolyline) return [];
+        const decodedPoints = decode(encodedPolyline);
+        return decodedPoints.map(p => ({ lat: p[0], lng: p[1] }));
+    }
+
     resamplePolyline(encodedPolyline, intervalMeters = 30) {
         if (!encodedPolyline) return [];
 

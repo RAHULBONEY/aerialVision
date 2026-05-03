@@ -112,8 +112,18 @@ async function processNDJSONStream(stream, streamInfo) {
 
       socketService.emitTelemetry(streamInfo.id, {
         frame: packet.frame || frameCount,
-        stats: packet.stats || {},
-        boxes: packet.boxes || [],
+        stats: {
+          ...(packet.stats || {}),
+          avg_speed: packet.stats?.avg_speed || 0,
+          speeds: packet.stats?.speeds || {},
+          congestion_phase: packet.stats?.congestion_phase || packet.stats?.status || 'CLEAR'
+        },
+        boxes: (packet.boxes || []).map(box => ({
+          ...box,
+          ...(box.track_id !== undefined ? { track_id: box.track_id } : {}),
+          ...(box.speed_kmh !== undefined ? { speed_kmh: box.speed_kmh } : {}),
+          ...(box.quality !== undefined ? { quality: box.quality } : {})
+        })),
         timestamp: Date.now()
       });
 
@@ -160,6 +170,10 @@ const INCIDENT_COOLDOWNS = {
   JAM: 120000,
   OBSTRUCTION: 60000,
   SPEEDING: 30000,
+  SUDDEN_BRAKING: 30000,
+  WRONG_WAY: 60000,
+  MULTI_VEHICLE_BLOCKAGE: 120000,
+  CONGESTION: 90000,
   DEFAULT: 45000
 };
 
@@ -212,6 +226,14 @@ async function processIncident(incidentData, streamInfo, packet) {
     }
 
     const mappedType = mapIncidentType(incidentData.type);
+    const severityOverride = {
+      'WRONG_WAY': 'CRITICAL',
+      'MULTI_VEHICLE_BLOCKAGE': 'CRITICAL',
+      'GREEN_WAVE': 'CRITICAL',
+      'SUDDEN_BRAKING': 'HIGH',
+      'OBSTRUCTION': incidentData.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH'
+    };
+    const severity = incidentData.severity || severityOverride[mappedType] || 'MEDIUM';
     
     const incidentPayload = {
       type: mappedType,
@@ -219,7 +241,8 @@ async function processIncident(incidentData, streamInfo, packet) {
       snapshot: incidentData.snapshot || null,
       vehicleCount: packet.stats?.count || 0,
       density: packet.stats?.density || 0,
-      speed: mappedType === 'OBSTRUCTION' ? 0 : (packet.stats?.avg_speed || 0)
+      speed: mappedType === 'OBSTRUCTION' && !['SUDDEN_BRAKING', 'WRONG_WAY'].includes(incidentData.type?.toUpperCase()) ? 0 : (packet.stats?.avg_speed || 0),
+      ...(severity ? { severity } : {})
     };
 
     const savedIncident = await incidentService.createFromBrain(incidentPayload, streamInfo);
@@ -243,7 +266,13 @@ function mapIncidentType(brainType) {
     'green_wave': 'GREEN_WAVE',
     'jam': 'CONGESTION',
     'congestion': 'CONGESTION',
-    'high_density': 'CONGESTION'
+    'high_density': 'CONGESTION',
+    'sudden_braking': 'OBSTRUCTION',
+    'wrong_way': 'OBSTRUCTION',
+    'multi_vehicle_blockage': 'OBSTRUCTION',
+    'gridlock': 'CONGESTION',
+    'building_up': 'CONGESTION',
+    'dissipating': 'CONGESTION'
   };
 
   const lower = (brainType || '').toLowerCase();
@@ -251,12 +280,39 @@ function mapIncidentType(brainType) {
 }
 
 exports.probeStream = async (streamUrl) => {
-  return {
-    recommended_model: 'mark4.5',
-    reason: 'Ironclad Safety Protocols - Mark 4.5 achieves 53.3% mAP on Ambulance detection',
-    viewType: 'GROUND',
-    isSimulation: true
-  };
+  const AI_ENGINE_URL = process.env.AI_ENGINE_URL || GATEWAY_URL;
+
+  try {
+    const response = await fetch(`${AI_ENGINE_URL}/probe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceUrl: streamUrl })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Probe failed: ${response.status}`);
+    }
+
+    const probeData = await response.json();
+    console.log(`[PROBE] View: ${probeData.viewType} | Model: ${probeData.recommended_model} | ${probeData.reason}`);
+
+    return {
+      recommended_model: probeData.recommended_model || 'mark-4.5',
+      reason: probeData.reason || 'Probe completed',
+      viewType: probeData.viewType || 'GROUND',
+      is_locked: probeData.is_locked || false,
+      isSimulation: false
+    };
+  } catch (error) {
+    console.warn(`[PROBE] Failed to probe stream, using defaults: ${error.message}`);
+    return {
+      recommended_model: 'mark-4.5',
+      reason: 'Probe unavailable - defaulting to Mark 4.5 for safety',
+      viewType: 'GROUND',
+      is_locked: false,
+      isSimulation: true
+    };
+  }
 };
 
 exports.getSimulationScenarios = async () => {
