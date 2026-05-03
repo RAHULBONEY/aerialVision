@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const VIDEO_FPS = 30;
-
 const STATUS_COLORS = {
     "🟢 FLOW": "bg-green-500",
     "🟡 SLOW": "bg-yellow-500",
@@ -35,6 +33,8 @@ export default function SmartVideoPlayer({
     const canvasRef = useRef(null);
     const animationRef = useRef(null);
     const containerRef = useRef(null);
+    const latestBoxesRef = useRef([]);
+    const latestStatsRef = useRef(stats);
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
@@ -43,32 +43,66 @@ export default function SmartVideoPlayer({
     const [currentTime, setCurrentTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    useEffect(() => {
+        latestStatsRef.current = stats;
+    }, [stats]);
+
+    useEffect(() => {
+        if (!getFrameData) return;
+        const interval = setInterval(() => {
+            const video = videoRef.current;
+            if (!video || !video.duration) return;
+            const frame = Math.floor(video.currentTime * 30);
+            const frameData = getFrameData(frame);
+            if (frameData?.boxes && frameData.boxes.length > 0) {
+                latestBoxesRef.current = frameData.boxes;
+            }
+            if (frameData?.stats) {
+                latestStatsRef.current = frameData.stats;
+            }
+        }, 100);
+        return () => clearInterval(interval);
+    }, [getFrameData]);
+
     const renderLoop = useCallback(() => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
 
-        if (!video || !canvas || video.paused) {
+        if (!video || !canvas) {
+            animationRef.current = requestAnimationFrame(renderLoop);
+            return;
+        }
+
+        const cw = canvas.width;
+        const ch = canvas.height;
+        if (cw === 0 || ch === 0) {
             animationRef.current = requestAnimationFrame(renderLoop);
             return;
         }
 
         const ctx = canvas.getContext("2d");
-        const frame = Math.floor(video.currentTime * VIDEO_FPS);
-        setCurrentFrame(frame);
-        setCurrentTime(video.currentTime);
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const frameData = getFrameData?.(frame);
-
-        if (frameData?.boxes && frameData.boxes.length > 0) {
-            drawBoundingBoxes(ctx, frameData.boxes, canvas.width, canvas.height);
+        if (!video.paused) {
+            const frame = Math.floor(video.currentTime * 30);
+            setCurrentFrame(frame);
+            setCurrentTime(video.currentTime);
         }
 
-        drawStatusOverlay(ctx, frameData?.stats || stats, canvas.width);
+        ctx.clearRect(0, 0, cw, ch);
+
+        const boxes = latestBoxesRef.current;
+        const currentStats = latestStatsRef.current;
+
+        if (boxes && boxes.length > 0) {
+            const videoW = video.videoWidth || 1280;
+            const videoH = video.videoHeight || 720;
+            drawBoundingBoxes(ctx, boxes, cw, ch, videoW, videoH);
+        }
+
+        drawStatusOverlay(ctx, currentStats, cw);
 
         animationRef.current = requestAnimationFrame(renderLoop);
-    }, [getFrameData, stats]);
+    }, []);
 
     useEffect(() => {
         animationRef.current = requestAnimationFrame(renderLoop);
@@ -87,17 +121,25 @@ export default function SmartVideoPlayer({
         if (!video || !canvas) return;
 
         const handleResize = () => {
-            canvas.width = video.clientWidth;
-            canvas.height = video.clientHeight;
+            const w = video.clientWidth || video.offsetWidth || 1280;
+            const h = video.clientHeight || video.offsetHeight || 720;
+            canvas.width = w;
+            canvas.height = h;
         };
 
         handleResize();
+        video.addEventListener("loadeddata", handleResize);
         video.addEventListener("loadedmetadata", handleResize);
         window.addEventListener("resize", handleResize);
 
+        const resizeObserver = new ResizeObserver(handleResize);
+        resizeObserver.observe(video);
+
         return () => {
+            video.removeEventListener("loadeddata", handleResize);
             video.removeEventListener("loadedmetadata", handleResize);
             window.removeEventListener("resize", handleResize);
+            resizeObserver.disconnect();
         };
     }, [videoSrc]);
 
@@ -107,10 +149,27 @@ export default function SmartVideoPlayer({
 
         const handleMetadata = () => {
             setDuration(video.duration);
+            const canvas = canvasRef.current;
+            if (canvas) {
+                canvas.width = video.clientWidth || 1280;
+                canvas.height = video.clientHeight || 720;
+            }
+        };
+
+        const handleDataLoaded = () => {
+            const canvas = canvasRef.current;
+            if (canvas && video) {
+                canvas.width = video.clientWidth || 1280;
+                canvas.height = video.clientHeight || 720;
+            }
         };
 
         video.addEventListener("loadedmetadata", handleMetadata);
-        return () => video.removeEventListener("loadedmetadata", handleMetadata);
+        video.addEventListener("loadeddata", handleDataLoaded);
+        return () => {
+            video.removeEventListener("loadedmetadata", handleMetadata);
+            video.removeEventListener("loadeddata", handleDataLoaded);
+        };
     }, [videoSrc]);
 
     const togglePlay = () => {
@@ -173,6 +232,7 @@ export default function SmartVideoPlayer({
                 ref={videoRef}
                 src={videoSrc}
                 className="w-full h-full object-contain"
+                autoPlay
                 muted={isMuted}
                 loop
                 playsInline
@@ -284,9 +344,39 @@ export default function SmartVideoPlayer({
     );
 }
 
-function drawBoundingBoxes(ctx, boxes, width, height) {
+function getVideoDisplayRect(canvasW, canvasH, videoW, videoH) {
+  const canvasRatio = canvasW / canvasH;
+  const videoRatio = videoW / videoH;
+
+  let drawW, drawH, offsetX, offsetY;
+
+  if (canvasRatio > videoRatio) {
+    drawH = canvasH;
+    drawW = canvasH * videoRatio;
+    offsetX = (canvasW - drawW) / 2;
+    offsetY = 0;
+  } else {
+    drawW = canvasW;
+    drawH = canvasW / videoRatio;
+    offsetX = 0;
+    offsetY = (canvasH - drawH) / 2;
+  }
+
+  return { drawW, drawH, offsetX, offsetY };
+}
+
+function drawBoundingBoxes(ctx, boxes, canvasW, canvasH, videoW, videoH) {
+    if (!videoW || !videoH || videoW === 0 || videoH === 0) return;
+
+    const { drawW, drawH, offsetX, offsetY } = getVideoDisplayRect(canvasW, canvasH, videoW, videoH);
+    const scaleX = drawW / videoW;
+    const scaleY = drawH / videoH;
+
     boxes.forEach((box) => {
-        const [x1, y1, x2, y2] = box.coords || box;
+        const x1 = box.x1 ?? 0;
+        const y1 = box.y1 ?? 0;
+        const x2 = box.x2 ?? 0;
+        const y2 = box.y2 ?? 0;
         const label = box.label || box.class || "";
         const confidence = box.confidence || box.conf || 0;
 
@@ -296,10 +386,10 @@ function drawBoundingBoxes(ctx, boxes, width, height) {
                 ? "#f59e0b"
                 : "#3b82f6";
 
-        const sx1 = x1 * width;
-        const sy1 = y1 * height;
-        const sx2 = x2 * width;
-        const sy2 = y2 * height;
+        const sx1 = offsetX + x1 * scaleX;
+        const sy1 = offsetY + y1 * scaleY;
+        const sx2 = offsetX + x2 * scaleX;
+        const sy2 = offsetY + y2 * scaleY;
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;

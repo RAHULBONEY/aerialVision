@@ -127,7 +127,7 @@ export function usePoliceStreams() {
       if (!live) return stream;
 
       const densityPercent = computeDensityPercent(live.count);
-      const speed = computeSpeedFromDensity(densityPercent);
+      const speed = live.avgSpeed ?? 0;
 
       return {
         ...stream,
@@ -136,6 +136,9 @@ export function usePoliceStreams() {
           density: densityPercent / 100,
           densityPercent,
           speed,
+          avgSpeed: live.avgSpeed ?? 0,
+          speeds: live.speeds ?? {},
+          congestionPhase: live.congestionPhase ?? live.status ?? 'UNKNOWN',
           count: live.count,
           status: live.status,
           updatedAt: live.timestamp,

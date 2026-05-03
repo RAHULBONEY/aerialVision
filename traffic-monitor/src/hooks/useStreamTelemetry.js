@@ -13,6 +13,7 @@ export function useStreamTelemetry(stream) {
     stats: { count: 0, status: 'IDLE', density: 0, green_wave: false },
     boxes: [],
     incidents: [],
+    frameImage: null,
     connectionStatus: 'idle',
     error: null,
   });
@@ -30,6 +31,7 @@ export function useStreamTelemetry(stream) {
           ...prev,
           stats: p.newStats || prev.stats,
           boxes: p.newBoxes || prev.boxes,
+          frameImage: p.newFrameImage || prev.frameImage,
           incidents: merged,
           connectionStatus: 'connected',
         };
@@ -109,8 +111,9 @@ export function useStreamTelemetry(stream) {
                 confidence: b.conf ?? 0,
               }));
               const newIncidents = packet.incidents || [];
+              const newFrameImage = packet.frame_image || null;
 
-              throttleRef.current.pending = { newStats, newBoxes, newIncidents };
+              throttleRef.current.pending = { newStats, newBoxes, newIncidents, newFrameImage };
               scheduleFlush();
             } catch (e) {
               console.warn('Malformed NDJSON line:', e);
@@ -151,6 +154,7 @@ export function useStreamTelemetry(stream) {
       stats: ndjsonState.stats,
       boxes: ndjsonState.boxes,
       incidents: ndjsonState.incidents,
+      frameImage: ndjsonState.frameImage,
       connectionStatus: ndjsonState.connectionStatus,
       error: ndjsonState.error,
       isLoading: ndjsonState.connectionStatus === 'connecting',
