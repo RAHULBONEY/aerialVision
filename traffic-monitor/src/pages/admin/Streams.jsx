@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStreams, useCreateStream, useToggleStream, useStopStream } from "@/hooks/useStreams";
+import { useLiveStreamMetrics } from "@/hooks/useLiveStreamMetrics";
 import { cn } from "@/lib/utils";
 import CreateStreamModal from "@/components/admin/CreateStreamModal";
 import StreamDetailModal from "@/components/admin/StreamDetailModal";
@@ -8,7 +9,7 @@ import StreamDetailModal from "@/components/admin/StreamDetailModal";
 
 import {
     Play, Pause, Eye, Video, AlertTriangle,
-    ChevronUp, ChevronDown, Settings, Wifi, WifiOff,
+    ChevronUp, ChevronDown, Trash2, Wifi, WifiOff,
     Activity
 } from "lucide-react";
 
@@ -54,7 +55,7 @@ const SortableHeader = ({ column, children, isActive, sortOrder, onClick }) => (
     </th>
 );
 
-function StreamRow({ stream, onToggle, onView, onStop, onTelemetry }) {
+function StreamRow({ stream, liveMetrics, onToggle, onView, onStop, onTelemetry }) {
     const [isHovered, setIsHovered] = useState(false);
     const model = MODEL_OPTIONS.find(m => m.id === stream.model) || MODEL_OPTIONS[0];
 
@@ -80,7 +81,7 @@ function StreamRow({ stream, onToggle, onView, onStop, onTelemetry }) {
             </td>
             <td className="py-4 px-4">
                 <div className="space-y-1">
-                    <div className="font-medium text-sm flex items-center gap-2">
+                    <div className="font-medium text-sm flex items-center gap-2 text-gray-900 dark:text-white">
                         {model.name}
                         {model.isProduction && (
                             <span className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded font-medium">PROD</span>
@@ -96,10 +97,19 @@ function StreamRow({ stream, onToggle, onView, onStop, onTelemetry }) {
                 <StatusBadge status={stream.status} error={stream.error} />
             </td>
             <td className="py-4 px-4">
-                <div className="space-y-1">
-                    <div className="text-sm font-mono">{stream.metrics?.fps || "0"} FPS</div>
-                    <div className="text-xs text-gray-500">{stream.metrics?.latency || "0"}ms latency</div>
-                </div>
+                {stream.status !== 'active' ? (
+                    <div className="text-sm text-gray-400 italic">Offline</div>
+                ) : liveMetrics ? (
+                    <div className="space-y-1">
+                        <div className="text-sm font-mono text-gray-900 dark:text-gray-100">{liveMetrics.avgSpeed || 0} km/h</div>
+                        <div className="text-xs text-gray-500">Count: {liveMetrics.count || 0}</div>
+                    </div>
+                ) : (
+                    <div className="space-y-1">
+                        <div className="text-sm font-mono text-gray-400 dark:text-gray-500">Awaiting data...</div>
+                        <div className="text-xs text-gray-400 animate-pulse">Connecting to GPU...</div>
+                    </div>
+                )}
             </td>
             <td className="py-4 px-4 text-right">
                 <div className="flex items-center gap-2 justify-end">
@@ -125,9 +135,10 @@ function StreamRow({ stream, onToggle, onView, onStop, onTelemetry }) {
                     </button>
                     <button
                         onClick={() => onStop(stream.id)}
-                        className="p-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-900 dark:bg-gray-800 dark:border-transparent dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white transition-colors shadow-sm"
+                        title="Delete Stream"
+                        className="p-2 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/30 dark:border-transparent dark:text-red-400 transition-colors shadow-sm"
                     >
-                        <Settings className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4" />
                     </button>
                 </div>
             </td>
@@ -137,6 +148,8 @@ function StreamRow({ stream, onToggle, onView, onStop, onTelemetry }) {
 
 export default function Streams() {
     const { data = [] } = useStreams();
+    const streamIds = useMemo(() => data.map(s => s.id), [data]);
+    const metricsMap = useLiveStreamMetrics(streamIds);
     const createStreamMutation = useCreateStream();
     const toggleStreamMutation = useToggleStream();
     const stopStreamMutation = useStopStream();
@@ -240,6 +253,7 @@ export default function Streams() {
                                     <StreamRow
                                         key={stream.id}
                                         stream={stream}
+                                        liveMetrics={metricsMap[stream.id]}
                                         onToggle={(id) => toggleStreamMutation.mutate({ id, status: stream.status })}
                                         onView={handleViewStream}
                                         onStop={(id) => stopStreamMutation.mutate(id)}
