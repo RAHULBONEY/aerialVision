@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aerialvision-cli"
+version = "1.0.0"
+description = "Aerial Vision Mission Control CLI"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "typer",
+    "rich",
+    "requests",
+]
+
+[project.scripts]
+avi = "avi.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avi*"]
