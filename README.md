@@ -1,3 +1,12 @@
+
+
+<img width="1536" height="1024" alt="finalarchitecture" src="https://github.com/user-attachments/assets/ee98905b-9359-409a-bcbf-9b9d97545776" />
+
+
+https://github.com/user-attachments/assets/09bb4e5a-5c03-4fe7-a0d2-1bfa12f16733
+
+
+
 # AerialVision
 A Distributed Microservice Platform for AI-Driven Smart City Traffic Monitoring and Emergency Routing
 
